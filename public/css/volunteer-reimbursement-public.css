@@ -1,0 +1,114 @@
+/**
+ * All of the CSS for your public-facing functionality should be
+ * included in this file.
+ */
+ .amount-claimed-container {
+    padding: 15px;
+    width: 250px;
+  }
+
+
+  .amount-inputs {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .amount-inputs span {
+    font-size: 1.5em;
+    margin-right: 5px;
+  }
+
+  .amount-input {
+    width: 50px;
+    padding: 5px;
+    font-size: 1em;
+    text-align: center;
+    margin: 0 5px;
+  }
+
+  .amount-input:focus {
+    outline-color: #888;
+  }
+
+  .amount-inputs .separator {
+    font-size: 1.5em;
+    margin: 0 5px;
+  }
+
+  .amount-labels {
+    display: flex;
+    justify-content: space-around;
+    font-size: 0.9em;
+    margin-top: 5px;
+    color: #333;
+  }
+
+  .container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.form-section {
+    width: 48%;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+.form-section h2 {
+    margin-top: 0;
+    font-size: 1.5em;
+    color: #333;
+}
+.instructions, .warning {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #fff3cd;
+    border-left: 4px solid #ffecb5;
+}
+.instructions h3, .warning h3 {
+    margin: 0;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+.instructions ul, .additional-info ul {
+    padding-left: 20px;
+    margin-top: 5px;
+}
+.additional-info {
+    margin-top: 15px;
+}
+
+/* Style for the container of the date input fields */
+.date-input-container {
+  display: flex;
+  align-items: center;
+}
+
+/* Style for individual date input fields */
+.date-input {
+  width: 40px;
+  text-align: center;
+  margin: 0 5px;
+}
+
+.year-input {
+  width: 60px;
+}
+
+.separator {
+  margin: 0 2px;
+}
+
+.calendar-icon {
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+
+.required {
+  color: red;
+  font-weight: bold;
+}

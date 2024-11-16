@@ -136,9 +136,9 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		echo '<tr><th>Submit Date</th><td>' . esc_html(date('Y-m-d', strtotime($reimbursement->submit_date))) . '</td></tr>';
 		echo '<tr><th>Status</th><td>';
 		echo '<select name="status">';
-		echo '<option value="Pending" ' . selected($reimbursement->status, 'pending', false) . '>Pending</option>';
-		echo '<option value="Approved" ' . selected($reimbursement->status, 'approved', false) . '>Approved</option>';
-		echo '<option value="Paid" ' . selected($reimbursement->status, 'paid', false) . '>Paid</option>';
+		echo '<option value="pending" ' . selected($reimbursement->status, 'pending', false) . '>Pending</option>';
+		echo '<option value="approved" ' . selected($reimbursement->status, 'approved', false) . '>Approved</option>';
+		echo '<option value="paid" ' . selected($reimbursement->status, 'paid', false) . '>Paid</option>';
 		echo '</select></td></tr>';
 		echo '</table>';
 	
@@ -226,7 +226,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 	}
 
 	public function render_meta_email_feild($default_html, $field_name, $value){
-		return '<input type="email" name="meta['.esc_attr($field_name).']" id="'.esc_attr($field_name).'" required value="'.$value.'" />';
+		return '<input type="email" name="meta['.esc_attr($field_name).']" id="'.esc_attr($field_name).'" value="'.$value.'" />';
 	}
 
 	public function render_meta_payee_committee($default_html, $field_name, $value){

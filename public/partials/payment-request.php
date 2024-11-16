@@ -99,7 +99,7 @@ $current_user = wp_get_current_user();
 
     <div class="rv-form-group">
         <label for="supplier_account_number">Bank account Number</label>
-        <input type="text" name="supplier_account_number" id="supplier_account_number" pattern="\d{5,10}">
+        <input type="text" name="supplier_account_number" id="supplier_account_number" pattern="\d{5,9}">
     </div>
 
     <div class="rv-form-group">

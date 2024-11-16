@@ -22,6 +22,12 @@
  */
 require_once VR_PLUGIN_PATH . "admin/class-volunteer-reimbursement-admin-table.php";
 require_once VR_PLUGIN_PATH . "admin/class-volunteer-reimbursement-admin-form-details.php";
+require_once VR_PLUGIN_PATH . "includes/aba/Generator/AbaFileGenerator.php";
+require_once VR_PLUGIN_PATH . "includes/aba/Model/Transaction.php";
+
+
+// use VR\AbaFileGenerator\Model\Transaction;
+// use VR\AbaFileGenerator\Generator\AbaFileGenerator;
 
 class Volunteer_Reimbursement_Admin {
 
@@ -55,6 +61,12 @@ class Volunteer_Reimbursement_Admin {
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
 		add_action( 'admin_menu', array($this, 'vr_admin_menu') );
+
+		add_action('wp_ajax_submit_aba_export', array($this, 'generate_aba_export'));
+        add_action('wp_ajax_nopriv_submit_aba_export', array($this, 'generate_aba_export'));
+
+		add_action('wp_ajax_export_xero', array($this, 'generate_xero_export'));
+        add_action('wp_ajax_nopriv_export_xero', array($this, 'generate_xero_export'));
 
 		new Volunteer_Reimbursement_Admin_Form_Details($plugin_name, $version);
 	}
@@ -173,28 +185,189 @@ class Volunteer_Reimbursement_Admin {
 		// Display the list table
 		$reimbursements_table = new VR_Reimbursements_Table($reimbursements);
 		$reimbursements_table->prepare_items();
-		echo '<form method="post">';
+		echo '<form method="post" id="vr_reimbursement_table">';
 		$reimbursements_table->display();
 		echo '</form>';
 	
 		echo '</div>';
 	
-	
-		// ob_start();
-
-		// include VR_PLUGIN_PATH . 'admin/partials/vr-admin-table.php';
-		// echo ob_get_clean();
-	
-		// Display data in a table and provide options to edit status, export, etc.
 	}
 
+	public function generate_aba_export(){
+		$reimbursement_ids = $_POST['reimbursement_ids'] ?? [];
+		if(empty($reimbursement_ids)){
+			wp_send_json_error([ 'status' => 'error', 'message' => 'No forms selected' ] );
+		}
 
-	public function vr_export_commbank() {
-		// Code to export data for Commbank CSV
+		$required_keys = [
+			'bsb',
+			'account_number',
+			'bank_name',
+			'user_name',
+			'remitter',
+			'entry_id',
+			'description',
+		];
+		
+		// Check if all required keys exist
+		$missing_keys = [];
+		foreach ($required_keys as $key) {
+			if (empty($_POST['description'][$key])) {
+				$missing_keys[] = $key;
+			}
+		}
+		
+		if (!empty($missing_keys)) {
+			wp_send_json_error([
+				'status' => 'error',
+				'message' => 'Missing required fields: ' . implode(', ', $missing_keys),
+			]);
+		}
+
+		$bsb = $_POST['description']['bsb'];
+
+		if (preg_match('/^\d{6}$/', $bsb)) {
+			// Convert to XXX-XXX format
+			$formatted_bsb = substr($bsb, 0, 3) . '-' . substr($bsb, 3, 3);
+		}else{
+			$formatted_bsb = $bsb;
+		}
+
+		$generator = new AbaFileGenerator(
+			sanitize_text_field($formatted_bsb),
+			sanitize_text_field($_POST['description']['account_number']),
+			sanitize_text_field($_POST['description']['bank_name']),
+			sanitize_text_field($_POST['description']['user_name']),
+			sanitize_text_field($_POST['description']['remitter']),
+			sanitize_text_field($_POST['description']['entry_id']),
+			sanitize_text_field($_POST['description']['description']),			
+		);
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'volunteer_reimbursements';
+
+		$query = sprintf(
+			"SELECT * FROM {$table_name} WHERE id IN (%s)",
+			implode(',', array_map('intval', $reimbursement_ids))
+		);
+		$reimbursements = $wpdb->get_results($query);
+
+		if (empty($reimbursements)) {
+			wp_send_json_error(['status' => 'error', 'message' => 'No valid reimbursements found']);
+		}
+
+		$transactions = [];
+		foreach($reimbursements as $reimbursement) {
+			$reimbursement_data = json_decode($reimbursement->meta);
+
+			$transaction = new Transaction();
+			$transaction = apply_filters('vr_get_transaction_'.$reimbursement->form_type, $transaction, $reimbursement);
+
+			$transactions[] = $transaction;
+			// $generator->addTransaction($transaction);
+		}
+
+
+		try {
+			$file_content = $generator->generate($transactions);
+			wp_send_json_success([
+				'status' => 'success',
+				'message' => 'ABA file generated successfully.',
+				'file_content' => $file_content,
+			]);
+		} catch (Exception $e) {
+			wp_send_json_error([
+				'status' => 'error',
+				'message' => 'Failed to generate ABA file: ' . $e->getMessage(),
+			]);
+		} finally {
+			wp_die(); // Ensure the script terminates properly
+		}
+		wp_die();
 	}
+
 	
-	public function vr_export_xero() {
-		// Code to export data for Xero CSV
+	public function generate_xero_export() {
+		$reimbursement_ids = $_POST['reimbursement_ids'] ?? [];
+		if(empty($reimbursement_ids)){
+			wp_send_json_error([ 'status' => 'error', 'message' => 'No forms selected' ] );
+		}
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'volunteer_reimbursements';
+
+		$query = sprintf(
+			"SELECT * FROM {$table_name} WHERE id IN (%s)",
+			implode(',', array_map('intval', $reimbursement_ids))
+		);
+		$reimbursements = $wpdb->get_results($query);
+		
+		if (empty($reimbursements)) {
+			wp_send_json_error(['status' => 'error', 'message' => 'No valid reimbursements found']);
+		}
+		ob_start();
+		$output = fopen('php://output', 'w');
+	
+		// Write header row
+		$headers = [
+			'*ContactName', 'EmailAddress', 'POAddressLine1', 'POAddressLine2', 'POAddressLine3', 'POAddressLine4',
+			'POCity', 'PORegion', 'POPostalCode', 'POCountry', '*InvoiceNumber', '*InvoiceDate', '*DueDate',
+			'InventoryItemCode', 'Description', '*Quantity', '*UnitAmount', '*AccountCode', '*TaxType',
+			'TrackingName1', 'TrackingOption1', 'TrackingName2', 'TrackingOption2', 'Currency'
+		];
+		fputcsv($output, $headers);
+
+		foreach ($reimbursements as $reimbursement) {
+			$reimbursement_data = json_decode($reimbursement->meta, true); // Decode meta field
+
+			$xero_bill_note = [
+                '*ContactName' => "",
+                'EmailAddress' => "",
+                'POAddressLine1' => "",
+                'POAddressLine2' => '',
+                'POAddressLine3' => '',
+                'POAddressLine4' => '',
+                'POCity' => "",
+                'PORegion' => "",
+                'POPostalCode' =>  '',
+                'POCountry' =>  '',
+                '*InvoiceNumber' => $reimbursement->id,
+                '*InvoiceDate' => date('d/m/Y'),
+                '*DueDate' => date('d/m/Y'),
+                'InventoryItemCode' => '', // Optional field, set to empty
+                'Description' => "",
+                '*Quantity' => '1',
+                '*UnitAmount' => '0.00',
+                '*AccountCode' => 'EVT-E', // Default account code
+                '*TaxType' => 'GST on Expenses',
+                'TrackingName1' => '',
+                'TrackingOption1' => '',
+                'TrackingName2' => '',
+                'TrackingOption2' => '',
+                'Currency' => ''
+            ];
+			$filtered_xero_bill_note = apply_filters('vr_get_xero_bill_note_'.$reimbursement->form_type, $xero_bill_note, $reimbursement);
+
+			if(count(array_intersect_key($filtered_xero_bill_note, $xero_bill_note)) != count($xero_bill_note)){
+				wp_send_json_error(['status' => 'error', 'message' => 'xero bill note filtering for '.$reimbursement->form_type.'changed the number of keys in the array']);
+			}
+
+			fputcsv($output, $filtered_xero_bill_note);
+		}
+
+		fclose($output);
+
+		// Capture the output buffer and clean it
+		$csv_content = ob_get_clean();
+
+		// Send CSV file as response
+		wp_send_json_success([
+			'status' => 'success',
+			'message' => 'Xero export generated successfully.',
+			'file_content' => base64_encode($csv_content), // Base64 encode for safe transfer
+		]);
+		wp_die();
+
 	}
 
 	function vr_update_reimbursement_status( $id, $new_status ) {

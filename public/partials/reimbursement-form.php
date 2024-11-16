@@ -64,7 +64,7 @@ $current_user = wp_get_current_user();
 
     <div class="rv-form-group">
         <label for="payee_account_number">Bank account Number<span class="required">*</span></label>
-        <input type="text" name="payee_account_number" id="payee_account_number" required pattern="\d{5,10}">
+        <input type="text" name="payee_account_number" id="payee_account_number" required pattern="\d{5,9}">
     </div>
 
     <div class="rv-form-group">

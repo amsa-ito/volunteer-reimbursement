@@ -6,6 +6,9 @@ class VR_Payment_Request_Form{
 		add_filter("vr_parse_". $this->form_type, array($this,"parse_form") , 10, 2);
 		add_filter("vr_check_valid_".$this->form_type, array($this,"check_valid_form_data") , 10, 1);
 
+		add_filter('vr_get_transaction_'.$this->form_type, array($this, "get_transaction_record"), 10, 2);
+		add_filter('vr_get_xero_bill_note_'.$this->form_type, array($this, "get_xero_bill_note"), 10, 2);
+
 	}
 
     public function parse_form($input, $files){
@@ -84,4 +87,40 @@ class VR_Payment_Request_Form{
 
         return false;
     }
+
+	public function get_transaction_record($transaction, $reimbursement){
+		$reimbursement_data = json_decode($reimbursement->meta);
+
+		$transaction->setAccountName($reimbursement_data->business_name);
+		$transaction->setAccountNumber($reimbursement_data->supplier_account_number);
+		if (preg_match('/^\d{6}$/', $reimbursement_data->supplier_bsb)) {
+			// Convert to XXX-XXX format
+			$formatted_bsb = substr($reimbursement_data->supplier_bsb, 0, 3) . '-' . substr($reimbursement_data->supplier_bsb, 3, 3);
+		}else{
+			$formatted_bsb = $reimbursement_data->supplier_bsb;
+		}
+		$transaction->setBsb($formatted_bsb);
+		$transaction->setTransactionCode(53);
+		$transaction->setReference($reimbursement->id);
+		$transaction->setAmount($reimbursement_data->amount->dollars+ $reimbursement_data->amount->cents/100);
+
+		return $transaction;
+
+	}
+
+	public function get_xero_bill_note($xero_bill_note, $reimbursement){
+		$reimbursement_data = json_decode($reimbursement->meta);
+		$xero_bill_note['*ContactName'] = $reimbursement_data->business_name;
+		$xero_bill_note['EmailAddress'] = $reimbursement_data->supplier_email;
+		$xero_bill_note['Description'] = $reimbursement_data->purpose . $reimbursement_data->transaction_details;
+
+		$xero_bill_note['*UnitAmount'] = $reimbursement_data->amount->dollars+ $reimbursement_data->amount->cents/100;
+		$xero_bill_note['Currency'] = $reimbursement_data->currency ?? "AUD";
+
+		$date = DateTime::createFromFormat('Y-m-d', $reimbursement_data->due_date);
+
+		$xero_bill_note['*DueDate'] = $date->format('d/m/Y');
+
+		return $xero_bill_note;
+	}
 }

@@ -2,6 +2,8 @@
 if (!class_exists('WP_List_Table')) {
     require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
+
+
 if (!class_exists('VR_Reimbursements_Table')) {
     class VR_Reimbursements_Table extends WP_List_Table {
 
@@ -53,7 +55,7 @@ if (!class_exists('VR_Reimbursements_Table')) {
         protected function column_id($item){
             $form_detail_url = add_query_arg(['page' => 'vr_reimbursement_detail', 'form_id' => $item->id], admin_url('admin.php'));
 
-            return '<a href="' . esc_url($form_detail_url) . '">' . esc_html($item->id) . '</a>';
+            return esc_html($item->id). '&emsp; <a href="' . esc_url($form_detail_url) . '">edit</a>';
         }
 
         protected function column_status($item){
@@ -124,8 +126,25 @@ if (!class_exists('VR_Reimbursements_Table')) {
                 'status_pending'   => 'Change Status to Pending',
                 'status_approved'  => 'Change Status to Approved',
                 'status_paid'      => 'Change Status to Paid',
+                // 'export_aba'       => 'Export ABA',
+                // 'export_xero'      => 'Export Xero'
             ];
         }
+
+        protected function extra_tablenav( $which ) {
+            if($which=='top'){
+                $page = $_REQUEST['page'];
+                ?>
+                    <div class="alignleft actions bulkactions">
+                        <button class="button action" id="export_aba">Export ABA</button>
+                        <button class="button action" id="export_xero">Export Xero</button>
+                    </div>
+                <?php
+
+            }
+           
+        }
+
 
 
     }

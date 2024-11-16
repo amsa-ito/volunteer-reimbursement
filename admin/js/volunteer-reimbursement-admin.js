@@ -59,7 +59,7 @@
         // let formData = $(this).serializeArray();
 		var formData = new FormData(this);
 
-		formData.set('action', 'save_admin_request_form');
+		formData.set('action', 'save_admin_claim_form');
 
 		formData.delete('meta[attachments][]');
 		for (let fileName in uploadedFiles) {
@@ -84,7 +84,7 @@
 			processData: false,
 			contentType: false,
 			success: function(response){
-				if (response.data['status' ==='success']){
+				if (response.data['status'] ==='success'){
 					$('#form-response').html('<p style="color:green;">' + response.data['message'] + '</p>');
 				}else{
 					$('#form-response').html('<p style="color:red;">' + response.data['message'] + '</p>');
@@ -121,45 +121,9 @@
 
 	let export_aba_button_status=false;
 
+	// modalHtml is defined in php class-volunteer-reimbursement-admin.php
 	$('#export_aba').on('click', function(e){
 		e.preventDefault();
-
-		var modalHtml = `
-		<div id="export-aba-modal">
-			<h2>Export ABA Details</h2>
-				<div>
-				<label for="bsb">BSB:</label><br>
-				<input type="text" id="bsb" name="description[bsb]" required><br><br>
-				
-				<label for="account_number">Account Number:</label><br>
-				<input type="text" id="account_number" name="description[account_number]" required><br><br>
-				</div>
-
-				<div>
-				<label for="bank_name">Bank Name:</label><br>
-				<input type="text" id="bank_name" name="description[bank_name]" required><br><br>
-				
-				<label for="user_name">User Name:</label><br>
-				<input type="text" id="user_name" name="description[user_name]" required><br><br>
-				</div>
-				
-				<div>
-				<label for="remitter">Remitter:</label><br>
-				<input type="text" id="remitter" name="description[remitter]"><br><br>
-				
-				<label for="entry_id">Entry ID:</label><br>
-				<input type="text" id="entry_id" name="description[entry_id]"><br><br>
-				</div>
-				
-				<div>
-				<label for="description">Description:</label><br>
-				<input type="text" id="description" name="description[description]" required><br><br>
-
-				<button class="button action" id="submit_aba_export">Export to ABA</button>
-				<div id="form-response"></div>
-				</div>
-
-		</div>`;
 
 		if (export_aba_button_status){
 			$('#export-aba-modal').remove();
@@ -232,10 +196,12 @@
 				}else{
 					// $('#form-response').html('<p style="color:red;">' + response.data['message'] + '</p>');
 					console.log(response.data['message']);
+					alert(response.data['message']);
 				}
 			},
 			error: function(jqXHR, textStatus, errorThrown) {
 				console.error("AJAX Error:", textStatus, errorThrown);
+				alert("There was an error processing your request. Please try again later.");
 				// $('#form-response').html('<p style="color:red;">There was an error processing your request. Please try again later.</p>');
 			}
 		});

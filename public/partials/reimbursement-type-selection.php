@@ -65,9 +65,9 @@
     <div id="form-response"></div>
 <?php
 // TODO spinning wheel in all form submissions
-// TODO emails to be sent when submitted, when change status
 // TODO form validate as you type
 // TODO dollar amount to enable instant typing
-// TODO settings to turn off emails
-// TODO export out into combank and xero format
+// TODO xero export format to include attachments
+// TODO store approval date, paid date
+// TODO table have more columns
 ?>

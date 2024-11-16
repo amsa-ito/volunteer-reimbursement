@@ -9,8 +9,8 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 	public function __construct( $plugin_name, $version ) {
         add_action( 'admin_menu', array($this, 'vr_admin_detail_page') );
         
-        add_action('wp_ajax_save_admin_request_form', array($this, 'save_vr_request_form'));
-        add_action('wp_ajax_nopriv_save_admin_request_form', array($this, 'save_vr_request_form'));
+        add_action('wp_ajax_save_admin_claim_form', array($this, 'save_vr_claim_form'));
+        add_action('wp_ajax_nopriv_save_admin_claim_form', array($this, 'save_vr_claim_form'));
 
 
 		add_filter('vr_render_meta_field_comments', array($this, 'render_meta_comments'), 10, 3);
@@ -24,10 +24,6 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		add_filter('vr_render_meta_field_supplier_email', array($this, 'render_meta_email_feild'), 10, 3);
 		add_filter('vr_render_meta_field_additional_email', array($this, 'render_meta_email_feild'), 10, 3);
 
-
-
-
-	
     }
 
 	public function vr_admin_detail_page() {
@@ -41,7 +37,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		);
     }
 
-    public function save_vr_request_form(){
+    public function save_vr_claim_form(){
 		// check_ajax_referer($this->plugin_name.'-nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -56,7 +52,6 @@ class Volunteer_Reimbursement_Admin_Form_Details{
         $reimbursement = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $form_id));
 
         if (!$reimbursement) {
-            debug_print($reimbursement);
             wp_send_json_error([ 'status' => 'error', 'message' => 'Form not found.' ] );
         }
 
@@ -66,14 +61,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 
         $new_status = sanitize_text_field($_POST['status']);
         
-
-        
         $existing_meta = json_decode($reimbursement->meta, true) ?: [];
-        
-        debug_print($_POST);
-        
-        debug_print($existing_meta);
-        debug_print($form_data);
 
         $new_form_data = array_replace_recursive($existing_meta, $form_data);
 
@@ -82,20 +70,32 @@ class Volunteer_Reimbursement_Admin_Form_Details{
         if($error_msg){
 			wp_send_json_error( [ 'status' => 'error', 'message' => $error_msg ] );
 		}
-        debug_print($new_form_data);
+
+		$user_id = $reimbursement->id;
+		if(isset($form_data['payee_email'])){
+			$user_by_email = get_user_by('email', $form_data['payee_email'])
+			if($user_by_email){
+				$user_id = $user_by_email ->id;
+			}
+		}
         
         $result = $wpdb->update($table_name, [
             'status' => $new_status,
-            'meta' => json_encode($new_form_data)
+            'meta' => json_encode($new_form_data),
+			'user_id' => $user_id,
         ], ['id' => $form_id]);
 
         if ($result !== false) {
-            wp_send_json_success(['status' => 'success', 'message' => 'Request submitted successfully!']);
+			$old_status = $reimbursement->status;
+			if($new_status != $old_status){
+				do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $reimbursement, $new_status);
+			}
+            wp_send_json_success(['status' => 'success', 'message' => 'Claim submitted successfully!']);
 
         } else {
             wp_send_json_error(['status'=>'error','message'=>'Failed to update the form.']);
         }
-        wp_send_json_success(['status' => 'success', 'message' => 'Request submitted successfully!']);
+        wp_send_json_success(['status' => 'success', 'message' => 'Claim submitted successfully!']);
 
         wp_die();
     }
@@ -123,7 +123,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		echo '<div class="wrap">';
 		echo '<h1>Reimbursement Form Details</h1>';
 		echo '<form method="post" id="vr-reimbursement-form">';
-        echo '<input type="hidden" name="action" value="save_admin_request_form">';
+        echo '<input type="hidden" name="action" value="save_admin_claim_form">';
         echo '<input type="hidden" name="form_id" value="'.$form_id.'">';
 
 	

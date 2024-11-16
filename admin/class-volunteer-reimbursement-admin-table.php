@@ -3,6 +3,8 @@ if (!class_exists('WP_List_Table')) {
     require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
 
+require_once VR_PLUGIN_PATH . "public/class-volunteer-reimbursements-my-account.php";
+
 
 if (!class_exists('VR_Reimbursements_Table')) {
     class VR_Reimbursements_Table extends WP_List_Table {
@@ -42,14 +44,7 @@ if (!class_exists('VR_Reimbursements_Table')) {
         }
 
         protected function column_form_type($item){
-            switch($item->form_type){
-                case "payment_request":
-                    return "Payment Request";
-                case "reimbursement":
-                    return "Reimbursement";
-                default:
-                    return $item->form_type;
-            }
+            return MetaDataFormatter::format_form_type($item->form_type);
         }
 
         protected function column_id($item){
@@ -59,16 +54,7 @@ if (!class_exists('VR_Reimbursements_Table')) {
         }
 
         protected function column_status($item){
-            switch($item->status){
-                case "pending":
-                    return '<span style="color: orange; font-weight: bold;">Pending</span>';
-                case "approved":
-                    return '<span style="color: blue; font-weight: bold;">Approved</span>';
-                case "paid":
-                    return '<span style="color: green; font-weight: bold;">Paid</span>';
-                default:
-                    return $item->status;
-            }
+            return MetaDataFormatter::format_status_colored($item->status);
         }
 
         // User column with link to profile

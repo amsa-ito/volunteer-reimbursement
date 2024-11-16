@@ -20,8 +20,11 @@
  * @subpackage Volunteer_Reimbursement/public
  * @author     Steven Zhang <stevenzhangshao@gmail.com>
  */
-include VR_PLUGIN_PATH . "includes/class-vr-payment-request-form.php";
-include VR_PLUGIN_PATH . "includes/class-vr-reimbursement-form.php";
+require_once VR_PLUGIN_PATH . "includes/class-vr-payment-request-form.php";
+require_once VR_PLUGIN_PATH . "includes/class-vr-reimbursement-form.php";
+require_once VR_PLUGIN_PATH . "includes/class-volunteer-reimbursement-string-formatter.php";
+require_once VR_PLUGIN_PATH . "public/class-volunteer-reimbursements-my-account.php";
+
 
 class Volunteer_Reimbursement_Public {
 
@@ -60,9 +63,10 @@ class Volunteer_Reimbursement_Public {
 		add_action('wp_ajax_payment_type_selection', array($this, 'process_payment_type_form'));
 		add_action('wp_ajax_nopriv_payment_type_selection', array($this, 'process_payment_type_form'));
 
-		add_action( 'wp_ajax_submit_request_form', array($this, 'vr_handle_request_form_submission') );
-		add_action( 'wp_ajax_nopriv_submit_request_form', array($this, 'vr_handle_request_form_submission') );
+		add_action( 'wp_ajax_submit_claim_form', array($this, 'vr_handle_claim_form_submission') );
+		add_action( 'wp_ajax_nopriv_submit_claim_form', array($this, 'vr_handle_claim_form_submission') );
 
+		new Volunteer_Reimbursement_My_Account($plugin_name, $version);
 		new VR_Payment_Request_Form();
 		new VR_Reimbursement_Form();
 
@@ -97,7 +101,7 @@ class Volunteer_Reimbursement_Public {
 		return ob_get_clean();
 	}
 
-	public function vr_handle_request_form_submission() {
+	public function vr_handle_claim_form_submission() {
 		check_ajax_referer($this->plugin_name.'-nonce', 'nonce');
 
 		$user_id = get_current_user_id();
@@ -121,7 +125,14 @@ class Volunteer_Reimbursement_Public {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'volunteer_reimbursements';
 
-		$wpdb->insert(
+		if($user_id<=0 $$ isset($form_data['payee_email'])){
+			$user_by_email = get_user_by('email', $form_data['payee_email'])
+			if($user_by_email){
+				$user_id = $user_by_email ->id;
+			}
+		}
+
+		$result=$wpdb->insert(
 			$table_name,
 			[
 				'submit_date' => $submit_date,
@@ -131,10 +142,65 @@ class Volunteer_Reimbursement_Public {
 				'form_type' => $form_type,
 			]
 		);
+
+		if($result){
+			$this->send_claim_submission_email($wpdb->insert_id, $submit_date, $user_id, $status, $form_data, $form_type);
+			wp_send_json_success(['status' => 'success', 'message' => 'Reimbursement submitted successfully!']);
+		}else{
+			wp_send_json_error(['status' => 'error', 'message' => 'Form submission failed!']);
+		}
 	
 		// Respond with success message
-		wp_send_json_success(['status' => 'success', 'message' => 'Reimbursement submitted successfully!']);
 		wp_die();
+	}
+
+	public function send_claim_submission_email($claim_id, $submit_date, $user_id, $status, $form_data, $form_type){
+		$payee_name = $form_data['payee_name'];
+		$payee_email = $form_data['payee_email'];
+		$purpose = $form_data['purpose'];
+
+		
+		$subject = sprintf('Your %s claim #%d for %s has been paid', 
+						$form_type,
+						$claim_id,
+						$purpose);
+
+		$message = sprintf(
+			"Dear %s,\n\nYour reimbursement claim has been successfully submitted on %s",
+			$payee_name,
+			date('d/m/Y', strtotime($submit_date)),
+		);
+		if($user_id>0){
+			$claim_url = wc_get_account_endpoint_url( 'reimbursement-claims' );
+			$message .= "\nTo track the status of your claim, please visit your <a href='" . esc_url($claim_url) . "'>account page</a>";
+		}
+		$message .= "\n\nHere are the details of your claim submission:\n\n";
+		$message .= "<table border='1' cellpadding='5' cellspacing='0'>";
+		foreach ($form_data as $key => $value) {
+			if (!empty($value)) { // Skip empty values
+				// Check if value is an array
+				if (is_array($value)) {
+					$message .= "<tr><td><strong>" . esc_html(ucwords(str_replace('_', ' ', $key))) . ":</strong></td><td>";
+					$message .= "<ul>"; // Start an unordered list
+					foreach ($value as $item) {
+						$message .= "<li>" . esc_html($item) . "</li>"; // List each item
+					}
+					$message .= "</ul></td></tr>"; // Close the unordered list
+				} else {
+					// Handle non-array value
+					$message .= "<tr><td><strong>" . esc_html(ucwords(str_replace('_', ' ', $key))) . ":</strong></td><td>" . esc_html($value) . "</td></tr>";
+				}
+			}
+		}
+		$message .= "</table>";
+		
+		// add the rest of form_data
+
+		$message .="\n\nThank you.\nAMSA Treasurer";
+
+		$email_status = wp_mail($payee_email, $subject, $message);
+
+		error_log($email_status);
 	}
 
 	/**

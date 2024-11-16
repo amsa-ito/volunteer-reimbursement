@@ -62,11 +62,17 @@ class Volunteer_Reimbursement_Admin {
 		$this->version = $version;
 		add_action( 'admin_menu', array($this, 'vr_admin_menu') );
 
+		add_action('admin_init', array($this, 'vr_register_settings'));
+
 		add_action('wp_ajax_submit_aba_export', array($this, 'generate_aba_export'));
         add_action('wp_ajax_nopriv_submit_aba_export', array($this, 'generate_aba_export'));
 
 		add_action('wp_ajax_export_xero', array($this, 'generate_xero_export'));
         add_action('wp_ajax_nopriv_export_xero', array($this, 'generate_xero_export'));
+
+		add_action('vr_reimbursement_pending_to_approved', array($this, 'claim_approved_email'), 10, 2);
+		add_action('vr_reimbursement_pending_to_paid', array($this, 'claim_paid_email'), 10, 2);
+		add_action('vr_reimbursement_approved_to_paid', array($this, 'claim_paid_email'), 10, 2);
 
 		new Volunteer_Reimbursement_Admin_Form_Details($plugin_name, $version);
 	}
@@ -88,6 +94,14 @@ class Volunteer_Reimbursement_Admin {
 			20
 		);
 
+		add_submenu_page(
+			'volunteer-reimbursement',
+			'Reimbursement Settings',
+			'Settings',
+			'manage_options',
+			'volunteer-reimbursement-settings',
+			array($this, 'vr_settings_page')
+		);
 
 	}
 
@@ -140,12 +154,50 @@ class Volunteer_Reimbursement_Admin {
 
 			// Apply the status change or delete as necessary
 			if ($action === 'delete') {
-				foreach ($reimbursement_ids as $id) {
-					$wpdb->delete($table_name, ['id' => $id]);
-				}
+				$ids_placeholder = implode(',', array_fill(0, count($reimbursement_ids), '%d'));
+				$sql = "DELETE FROM {$table_name} WHERE id IN ($ids_placeholder)";
+				$wpdb->query($wpdb->prepare($sql, $reimbursement_ids));
+
 			} elseif ($new_status) {
+				$ids_placeholder = implode(',', array_fill(0, count($reimbursement_ids), '%d'));
+				$sql = "UPDATE {$table_name} SET status = %s WHERE id IN ($ids_placeholder)";
+				$parameters = array_merge([$new_status], $reimbursement_ids);
+
+				$wpdb->query($wpdb->prepare($sql, $parameters));
+
+				// Create an indexed array of reimbursements by their ID
+				$indexed_reimbursements = [];
+				foreach ($reimbursements as $reimbursement) {
+					$indexed_reimbursements[$reimbursement->id] = $reimbursement;
+				}
+
+				$missing_ids=[];
 				foreach ($reimbursement_ids as $id) {
-					$wpdb->update($table_name, ['status' => $new_status], ['id' => $id]);
+					if (isset($indexed_reimbursements[$id])) {
+						$reimbursement = $indexed_reimbursements[$id];
+						$old_status = $reimbursement->status;
+
+						if($old_status===$new_status){
+							continue;
+						}
+						// debug_print('vr_reimbursement_' . $old_status . '_to_' . $new_status);
+						do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $reimbursement, $new_status);
+					} else {
+						$missing_ids[] = $id;
+					}
+				}
+				if($missing_ids){
+					?>
+					<div class="error notice">
+						<p>Claims with ID <?php echo(implode(", ", $missing_ids))?> not found.</p>
+					</div>
+					<?php
+				}else{
+					?>
+					<div class="success notice">
+						<p>Claim status changed to <?php echo(esc_attr($new_status))?> </p>
+					</div>
+					<?php
 				}
 			}
 	
@@ -190,6 +242,58 @@ class Volunteer_Reimbursement_Admin {
 		echo '</form>';
 	
 		echo '</div>';
+
+		ob_start();
+		?>
+		<script>
+		var modalHtml = `
+			<div id="export-aba-modal">
+				<h2>Export ABA Details</h2>
+				<div class="form-row">
+					<div class="form-group">
+						<label for="bsb">BSB:</label>
+						<input type="text" id="bsb" name="description[bsb]" required>
+					</div>
+					<div class="form-group">
+						<label for="account_number">Account Number:</label>
+						<input type="text" id="account_number" name="description[account_number]" required>
+					</div>
+				</div>
+				<div class="form-row">
+					<div class="form-group">
+						<label for="bank_name">Bank Name:</label>
+						<input type="text" id="bank_name" name="description[bank_name]" required value=<?php echo esc_attr(get_option('vr_default_bank_name', ''));?>>
+					</div>
+					<div class="form-group">
+						<label for="user_name">User Name:</label>
+						<input type="text" id="user_name" name="description[user_name]" required value=<?php echo esc_attr(wp_get_current_user()->display_name);?>>
+					</div>
+				</div>
+				<div class="form-row">
+					<div class="form-group">
+						<label for="remitter">Remitter:</label>
+						<input type="text" id="remitter" name="description[remitter]" required>
+					</div>
+					<div class="form-group">
+						<label for="entry_id">Entry ID:</label>
+						<input type="text" id="entry_id" name="description[entry_id]" required>
+					</div>
+				</div>
+				<div class="form-row">
+					<div class="form-group">
+						<label for="description">Description:</label>
+						<input type="text" id="description" name="description[description]" required>
+					</div>
+				</div>
+				<div class="form-actions">
+					<button class="button action" id="submit_aba_export">Export to ABA</button>
+				</div>
+				<div id="form-response"></div>
+			</div>`;
+		</script>
+
+		<?php
+		echo ob_get_clean();
 	
 	}
 
@@ -370,26 +474,169 @@ class Volunteer_Reimbursement_Admin {
 
 	}
 
-	function vr_update_reimbursement_status( $id, $new_status ) {
-		global $wpdb;
-		$table_name=$wpdb->prefix."volunteer_reimbursements";
-		$wpdb->update(
-			$table_name,
-			['status' => $new_status],
-			['id' => $id]
-		);
-
-		$reimbursement = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $id));
-	
-
-	
-		if ( $new_status === 'paid' ) {
-			// Fetch user email and send a notification
-			$user_info = get_userdata($reimbursement->user_id);
-			$user_email = $user_info->user_email;
-			wp_mail( $user_email, "Reimbursement Paid", "Your reimbursement request has been paid." );
-		}
+	public function vr_settings_page() {
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e('Volunteer Reimbursement Settings', 'text-domain'); ?></h1>
+			<form method="post" action="options.php">
+				<?php
+				settings_fields('vr_settings_group');
+				do_settings_sections('volunteer-reimbursement-settings');
+				submit_button();
+				?>
+			</form>
+		</div>
+		<?php
 	}
+
+	public function vr_register_settings() {
+		// Register the settings
+		register_setting(
+			'vr_settings_group', 
+			'vr_default_bank_name', 
+			array(
+				'type' => 'string',
+				'sanitize_callback' => array($this, 'vr_sanitize_bank_name'),
+				'default' => ''
+			)
+		);
+		register_setting(
+			'vr_settings_group', 
+			'vr_allow_notification_emails', 
+			array(
+				'type' => 'string',
+				'sanitize_callback' => function ($value) {
+					return $value === 'yes' ? 'yes' : 'no';
+				},
+				'default' => 'yes'
+			)
+		);
+	
+		// Add settings section
+		add_settings_section(
+			'vr_settings_section',
+			'General Settings',
+			function () {
+				echo '<p>' . __('Configure the default settings for Volunteer Reimbursement.', 'text-domain') . '</p>';
+			},
+			'volunteer-reimbursement-settings'
+		);
+	
+		// Add Default Bank Name field
+		add_settings_field(
+			'vr_default_bank_name',
+			'Default Bank Name',
+			function () {
+				$value = get_option('vr_default_bank_name', '');
+				echo '<input type="text" id="vr_default_bank_name" maxlength="3" name="vr_default_bank_name" value="' . esc_attr($value) . '" class="regular-text">';
+				echo '<p class="description">Enter a bank name abbreviation (e.g., CBA for Commonwealth Bank). Must be 3 capital letters.</p>';
+			},
+			'volunteer-reimbursement-settings',
+			'vr_settings_section'
+		);
+	
+		// Add Allow Notification Emails field
+		add_settings_field(
+			'vr_allow_notification_emails',
+			'Allow Notification Emails',
+			function () {
+				$value = get_option('vr_allow_notification_emails', 'yes');
+				echo '<label><input type="checkbox" id="vr_allow_notification_emails" name="vr_allow_notification_emails" value="yes" ' . checked($value, 'yes', false) . '> Enable notification emails</label>';
+				echo '<p class="description">Enable email notifications for when the status of a claim changes</p>';
+
+			},
+			'volunteer-reimbursement-settings',
+			'vr_settings_section'
+		);
+	}
+
+	public function vr_sanitize_bank_name($input) {
+		if (preg_match('/^[A-Z]{3}$/', $input)) {
+			return $input; // Valid format
+		}
+	
+		// Add admin notice for invalid input
+		add_settings_error(
+			'vr_default_bank_name',
+			'invalid_bank_name',
+			'Default Bank Name must be exactly 3 capital letters (e.g., CBA).',
+			'error'
+		);
+	
+		return get_option('vr_default_bank_name', ''); // Fallback to the existing value
+	}
+
+
+	public function claim_approved_email($reimbursement, $new_status) {
+		if(get_option('vr_allow_notification_emails', 'yes')!=='yes'){
+			return;
+		}
+		$meta = json_decode($reimbursement->meta, true);
+		$payee_name = $meta['payee_name'];
+		$payee_email = $meta['payee_email'];
+		$purpose = $meta['purpose'];
+		$amount = number_format($meta['amount']['dollars'] + $meta['amount']['cents'] / 100, 2);
+	
+		$subject = sprintf('Your %s claim #%d for %s has been approved', 
+						$reimbursement->form_type,
+						 $reimbursement->id,
+						 $purpose);
+		$message = sprintf(
+			"Dear %s,\n\nYour reimbursement claim submitted on %s has been approved.\n\nPurpose: %s\n Description: %s\nAmount: $%s",
+			$payee_name,
+			date('d/m/Y', strtotime($reimbursement->submit_date)),
+			$purpose,
+			$transaction_details,
+			$amount
+		);
+		if($reimbursement->user_id>0){
+			$claim_url = wc_get_account_endpoint_url( 'reimbursement-claims' );
+			$message .= "\nTo track the status of your claim, please visit your <a href='" . esc_url($claim_url) . "'>account page</a>";
+		}
+
+		$message .="\n\nThank you.\nAMSA Treasurer";
+	
+		$email_status = wp_mail($payee_email, $subject, $message);
+
+		error_log($email_status);
+	}
+
+	public function claim_paid_email($reimbursement, $new_status) {
+		if(get_option('vr_allow_notification_emails', 'yes')!=='yes'){
+			return;
+		}
+		$meta = json_decode($reimbursement->meta, true);
+		$payee_name = $meta['payee_name'];
+		$payee_email = $meta['payee_email'];
+		$purpose = $meta['purpose'];
+		$amount = number_format($meta['amount']['dollars'] + $meta['amount']['cents'] / 100, 2);
+		$transaction_details = $meta['transaction_details'] ?? 'N/A';
+	
+		$subject = sprintf('Your %s claim #%d for %s has been paid', 
+						$reimbursement->form_type,
+						$reimbursement->id,
+						$purpose);
+
+		$message = sprintf(
+			"Dear %s,\n\nYour reimbursement claim submitted on %s has been paid.\n\nPurpose: %s\n Description: %s\nAmount: $%s",
+			$payee_name,
+			date('d/m/Y', strtotime($reimbursement->submit_date)),
+			$purpose,
+			$transaction_details,
+			$amount
+		);
+		if($reimbursement->user_id>0){
+			$claim_url = wc_get_account_endpoint_url( 'reimbursement-claims' );
+			$message .= "\nTo track the status of your claim, please visit your <a href='" . esc_url($claim_url) . "'>account page</a>";
+		}
+
+		$message .="\n\nThank you.\nAMSA Treasurer";
+	
+		$email_status = wp_mail($payee_email, $subject, $message);
+
+		error_log($email_status);
+	}
+
 
 
 	public function enqueue_styles() {

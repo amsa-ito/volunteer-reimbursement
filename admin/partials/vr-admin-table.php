@@ -29,7 +29,7 @@
         </tr>
     <?php endforeach; ?>
 <?php else : ?>
-    <tr><td colspan="5">No reimbursement requests found.</td></tr>
+    <tr><td colspan="5">No reimbursement claims found.</td></tr>
 <?php endif; ?>
 
 </tbody>

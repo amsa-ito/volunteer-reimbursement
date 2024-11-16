@@ -112,3 +112,18 @@
   color: red;
   font-weight: bold;
 }
+
+.vr_form_status_pending{
+  font-weight: bold;
+  color: orange;
+}
+
+.vr_form_status_approved{
+  font-weight: bold;
+  color: blue;
+}
+
+.vr_form_status_paid{
+  font-weight: bold;
+  color: green;
+}

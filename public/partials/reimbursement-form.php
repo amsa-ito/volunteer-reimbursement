@@ -3,7 +3,7 @@ $current_user = wp_get_current_user();
 ?>
 
 <form id="reimbursement-form" enctype="multipart/form-data">
-    <input type="hidden" name="action" value="submit_request_form">
+    <input type="hidden" name="action" value="submit_claim_form">
     <input type="hidden" name="form_type" value="reimbursement">
 
     <h3>Your details</h3>
@@ -87,7 +87,7 @@ $current_user = wp_get_current_user();
 
     <div class="rv-form-group">
         <label for="transaction_details">Transaction details<span class="required">*</span></label>
-        <textarea name="transaction_details" id="transaction_details" required data-helper="Please describe each transaction that makes up this request. For each transaction this should include:\n- what you bought\n- who you bought it from\n- how much it cost"></textarea>
+        <textarea name="transaction_details" id="transaction_details" required data-helper="Please describe each transaction that makes up this claim. For each transaction this should include:\n- what you bought\n- who you bought it from\n- how much it cost"></textarea>
     </div>
 
 

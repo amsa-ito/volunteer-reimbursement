@@ -4,7 +4,7 @@ $current_user = wp_get_current_user();
 ?>
 
 <form id="reimbursement-form" enctype="multipart/form-data">
-    <input type="hidden" name="action" value="submit_request_form">
+    <input type="hidden" name="action" value="submit_claim_form">
     <input type="hidden" name="form_type" value="payment_request">
 
     <h3>Your details</h3>

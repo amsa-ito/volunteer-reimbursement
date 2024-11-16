@@ -2,3 +2,36 @@
  * All of the CSS for your admin-specific functionality should be
  * included in this file.
  */
+
+ .form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+    max-width: 960px;
+}
+
+.form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.vr_form_status_pending{
+    font-weight: bold;
+    color: orange;
+}
+
+.vr_form_status_approved{
+    font-weight: bold;
+    color: blue;
+}
+
+.vr_form_status_paid{
+    font-weight: bold;
+    color: green;
+}

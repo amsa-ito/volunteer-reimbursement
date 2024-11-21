@@ -22,6 +22,7 @@
  */
 require_once VR_PLUGIN_PATH . "admin/class-volunteer-reimbursement-admin-table.php";
 require_once VR_PLUGIN_PATH . "admin/class-volunteer-reimbursement-admin-form-details.php";
+require_once VR_PLUGIN_PATH . "admin/class-volunteer-reimbursement-admin-settings.php";
 require_once VR_PLUGIN_PATH . "includes/aba/Generator/AbaFileGenerator.php";
 require_once VR_PLUGIN_PATH . "includes/aba/Model/Transaction.php";
 
@@ -49,6 +50,10 @@ class Volunteer_Reimbursement_Admin {
 	 */
 	private $version;
 
+	private $table_name;
+
+	private $wpdb;
+
 	/**
 	 * Initialize the class and set its properties.
 	 *
@@ -60,21 +65,31 @@ class Volunteer_Reimbursement_Admin {
 
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
+		global $wpdb;
+		$this->wpdb = $wpdb;
+		$this->table_name = $this->wpdb->prefix . 'volunteer_reimbursements';
+
 		add_action( 'admin_menu', array($this, 'vr_admin_menu') );
 
-		add_action('admin_init', array($this, 'vr_register_settings'));
 
 		add_action('wp_ajax_submit_aba_export', array($this, 'generate_aba_export'));
         add_action('wp_ajax_nopriv_submit_aba_export', array($this, 'generate_aba_export'));
 
-		add_action('wp_ajax_export_xero', array($this, 'generate_xero_export'));
-        add_action('wp_ajax_nopriv_export_xero', array($this, 'generate_xero_export'));
+		// add_action('wp_ajax_export_xero', array($this, 'generate_xero_export'));
+        // add_action('wp_ajax_nopriv_export_xero', array($this, 'generate_xero_export'));
 
 		add_action('vr_reimbursement_pending_to_approved', array($this, 'claim_approved_email'), 10, 2);
 		add_action('vr_reimbursement_pending_to_paid', array($this, 'claim_paid_email'), 10, 2);
 		add_action('vr_reimbursement_approved_to_paid', array($this, 'claim_paid_email'), 10, 2);
 
+		add_action('vr_reimbursement_pending_to_approved', array($this, 'log_claim_approved_time'), 10, 2);
+		add_action('vr_reimbursement_pending_to_paid', array($this, 'log_claim_paid_time'), 10, 2);
+		add_action('vr_reimbursement_pending_to_paid', array($this, 'log_claim_paid_time'), 10, 2);
+
+
+
 		new Volunteer_Reimbursement_Admin_Form_Details($plugin_name, $version);
+		new Volunteer_Reimbursement_Admin_Settings($plugin_name, $version);
 	}
 
 	/**
@@ -87,27 +102,31 @@ class Volunteer_Reimbursement_Admin {
 		add_menu_page(
 			'Volunteer Reimbursement',
 			'Reimbursement',
-			'edit_posts',
+			'manage_volunteer_claims',
 			'volunteer-reimbursement',
 			array($this, 'vr_admin_page'),
 			'dashicons-admin-users',
 			20
 		);
-
-		add_submenu_page(
-			'volunteer-reimbursement',
-			'Reimbursement Settings',
-			'Settings',
-			'manage_options',
-			'volunteer-reimbursement-settings',
-			array($this, 'vr_settings_page')
-		);
-
 	}
 
 	public function vr_admin_page() {
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'volunteer_reimbursements';
+		// Handle delete action
+		if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['reimbursement_id'])) {
+			$reimbursement_id = absint($_GET['reimbursement_id']);
+	
+			// Verify nonce
+			if (!wp_verify_nonce($_GET['_wpnonce'], 'delete_reimbursement_' . $reimbursement_id)) {
+				wp_die(__('Invalid nonce specified.', 'vr-plugin'));
+			}
+	
+			// Perform the delete action
+			$this->delete_claims([$reimbursement_id]);
+	
+			// Redirect back to prevent duplicate actions on refresh
+			wp_redirect(remove_query_arg(['action', 'reimbursement_id', '_wpnonce']));
+			exit;
+		}
 
 		$selected_status = $_GET['status'] ?? '';
 		
@@ -119,27 +138,14 @@ class Volunteer_Reimbursement_Admin {
 			'Paid' => 'paid'
 		];
 	
-		$status_counts = [];
-		foreach ($statuses as $status_name => $status_value) {
-			if ($status_value) {
-				// Count for specific status
-				$count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE status = %s", $status_value));
-			} else {
-				// Total count for all statuses
-				$count = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
-			}
-			$status_counts[$status_name] = $count;
-		}
-
 		// Retrieve reimbursements with optional status filtering
-		$query = "SELECT * FROM $table_name";
+		$query = "SELECT * FROM $this->table_name";
 		if ($selected_status) {
-			$query .= $wpdb->prepare(" WHERE status = %s", $selected_status);
+			$query .= $this->wpdb->prepare(" WHERE status = %s", $selected_status);
 		}
 		$query .= " ORDER BY submit_date DESC";
-		$reimbursements = $wpdb->get_results($query);
 
-		if (isset($_POST['action']) && $_POST['action'] !== -1) {
+		if (isset($_POST['action']) && $_POST['action'] !== -1 && $_POST['reimbursement_ids']) {
 			$action = $_POST['action'];
 			$reimbursement_ids = $_POST['reimbursement_ids'] ?? [];
 
@@ -154,56 +160,31 @@ class Volunteer_Reimbursement_Admin {
 
 			// Apply the status change or delete as necessary
 			if ($action === 'delete') {
-				$ids_placeholder = implode(',', array_fill(0, count($reimbursement_ids), '%d'));
-				$sql = "DELETE FROM {$table_name} WHERE id IN ($ids_placeholder)";
-				$wpdb->query($wpdb->prepare($sql, $reimbursement_ids));
+				$this->delete_claims($reimbursement_ids);
 
-			} elseif ($new_status) {
-				$ids_placeholder = implode(',', array_fill(0, count($reimbursement_ids), '%d'));
-				$sql = "UPDATE {$table_name} SET status = %s WHERE id IN ($ids_placeholder)";
-				$parameters = array_merge([$new_status], $reimbursement_ids);
+			} elseif ($action === 'export_xero'){
+				$zip_file = $this->generate_xero_export($reimbursement_ids);
+				
+				header('Content-Type: application/zip');
+				header('Content-Transfer-Encoding: binary');
+				header('Content-Disposition: attachment; filename="' . basename($zip_file) . '"');
+				header('Content-Length: ' . filesize($zip_file));
+				ob_clean();
+				flush();
+				readfile($zip_file);
 
-				$wpdb->query($wpdb->prepare($sql, $parameters));
+				$this->rrmdir(dirname($zip_file));
 
-				// Create an indexed array of reimbursements by their ID
-				$indexed_reimbursements = [];
-				foreach ($reimbursements as $reimbursement) {
-					$indexed_reimbursements[$reimbursement->id] = $reimbursement;
-				}
-
-				$missing_ids=[];
-				foreach ($reimbursement_ids as $id) {
-					if (isset($indexed_reimbursements[$id])) {
-						$reimbursement = $indexed_reimbursements[$id];
-						$old_status = $reimbursement->status;
-
-						if($old_status===$new_status){
-							continue;
-						}
-						// debug_print('vr_reimbursement_' . $old_status . '_to_' . $new_status);
-						do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $reimbursement, $new_status);
-					} else {
-						$missing_ids[] = $id;
-					}
-				}
-				if($missing_ids){
-					?>
-					<div class="error notice">
-						<p>Claims with ID <?php echo(implode(", ", $missing_ids))?> not found.</p>
-					</div>
-					<?php
-				}else{
-					?>
-					<div class="success notice">
-						<p>Claim status changed to <?php echo(esc_attr($new_status))?> </p>
-					</div>
-					<?php
-				}
+			}elseif ($new_status) {
+				$this->update_new_status($new_status, $reimbursement_ids);
 			}
 	
-			// Reload the page after performing actions
-			echo '<script>location.reload();</script>';
-		}
+			// refresh page data after performing actions
+			$reimbursements = $this->wpdb->get_results($query);
+		}else{
+			$reimbursements = $this->wpdb->get_results($query);
+
+		}	
 
 		echo '<div class="wrap">';
 		echo '<h1>Volunteer Reimbursements</h1>';
@@ -211,8 +192,8 @@ class Volunteer_Reimbursement_Admin {
 		// Filter by form type
 		echo '<form method="get">';
 		echo '<select name="form_type">';
-		echo '<option value="">All Form Types</option>';
-		foreach ($wpdb->get_col("SELECT DISTINCT form_type FROM $table_name") as $type) {
+		echo '<option value="">All Claim Types</option>';
+		foreach ($this->wpdb->get_col("SELECT DISTINCT form_type FROM $this->table_name") as $type) {
 			printf('<option value="%s" %s>%s</option>', esc_attr($type), selected($_GET['form_type'] ?? '', $type, false), esc_html($type));
 		}
 		echo '</select>';
@@ -220,6 +201,19 @@ class Volunteer_Reimbursement_Admin {
 		echo '</form>';
 
 		echo '<ul class="subsubsub">';
+
+		$status_counts = [];
+		foreach ($statuses as $status_name => $status_value) {
+			if ($status_value) {
+				// Count for specific status
+				$count = $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM $this->table_name WHERE status = %s", $status_value));
+			} else {
+				// Total count for all statuses
+				$count = $this->wpdb->get_var("SELECT COUNT(*) FROM $this->table_name");
+			}
+			$status_counts[$status_name] = $count;
+		}
+
 		foreach ($statuses as $label => $status) {
 			$class = ($selected_status === $status) ? 'current' : '';
 			$status_url = add_query_arg(['status' => $status], remove_query_arg('paged'));
@@ -243,61 +237,20 @@ class Volunteer_Reimbursement_Admin {
 	
 		echo '</div>';
 
-		ob_start();
-		?>
-		<script>
-		var modalHtml = `
-			<div id="export-aba-modal">
-				<h2>Export ABA Details</h2>
-				<div class="form-row">
-					<div class="form-group">
-						<label for="bsb">BSB:</label>
-						<input type="text" id="bsb" name="description[bsb]" required>
-					</div>
-					<div class="form-group">
-						<label for="account_number">Account Number:</label>
-						<input type="text" id="account_number" name="description[account_number]" required>
-					</div>
-				</div>
-				<div class="form-row">
-					<div class="form-group">
-						<label for="bank_name">Bank Name:</label>
-						<input type="text" id="bank_name" name="description[bank_name]" required value=<?php echo esc_attr(get_option('vr_default_bank_name', ''));?>>
-					</div>
-					<div class="form-group">
-						<label for="user_name">User Name:</label>
-						<input type="text" id="user_name" name="description[user_name]" required value=<?php echo esc_attr(wp_get_current_user()->display_name);?>>
-					</div>
-				</div>
-				<div class="form-row">
-					<div class="form-group">
-						<label for="remitter">Remitter:</label>
-						<input type="text" id="remitter" name="description[remitter]" required>
-					</div>
-					<div class="form-group">
-						<label for="entry_id">Entry ID:</label>
-						<input type="text" id="entry_id" name="description[entry_id]" required>
-					</div>
-				</div>
-				<div class="form-row">
-					<div class="form-group">
-						<label for="description">Description:</label>
-						<input type="text" id="description" name="description[description]" required>
-					</div>
-				</div>
-				<div class="form-actions">
-					<button class="button action" id="submit_aba_export">Export to ABA</button>
-				</div>
-				<div id="form-response"></div>
-			</div>`;
-		</script>
 
-		<?php
-		echo ob_get_clean();
+		ob_start();
+		include_once(VR_PLUGIN_PATH . 'admin/partials/volunteer-reimbursement-aba-modal.php');
+		$modalContent = ob_get_clean();
+
+		echo "<script>var modalHtml =`".$modalContent."`</script>";
 	
 	}
 
 	public function generate_aba_export(){
+		if (!current_user_can('manage_volunteer_claims')){
+			wp_send_json_error([ 'status' => 'error', 'message' => 'You do not have sufficient permissions.' ] );
+		}
+
 		$reimbursement_ids = $_POST['reimbursement_ids'] ?? [];
 		if(empty($reimbursement_ids)){
 			wp_send_json_error([ 'status' => 'error', 'message' => 'No forms selected' ] );
@@ -347,14 +300,11 @@ class Volunteer_Reimbursement_Admin {
 			sanitize_text_field($_POST['description']['description']),			
 		);
 
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'volunteer_reimbursements';
-
 		$query = sprintf(
-			"SELECT * FROM {$table_name} WHERE id IN (%s)",
+			"SELECT * FROM {$this->table_name} WHERE id IN (%s)",
 			implode(',', array_map('intval', $reimbursement_ids))
 		);
-		$reimbursements = $wpdb->get_results($query);
+		$reimbursements = $this->wpdb->get_results($query);
 
 		if (empty($reimbursements)) {
 			wp_send_json_error(['status' => 'error', 'message' => 'No valid reimbursements found']);
@@ -390,27 +340,118 @@ class Volunteer_Reimbursement_Admin {
 		wp_die();
 	}
 
-	
-	public function generate_xero_export() {
-		$reimbursement_ids = $_POST['reimbursement_ids'] ?? [];
-		if(empty($reimbursement_ids)){
-			wp_send_json_error([ 'status' => 'error', 'message' => 'No forms selected' ] );
+	public function update_new_status($new_status, $reimbursement_ids){
+		$ids_placeholder = implode(',', array_fill(0, count($reimbursement_ids), '%d'));
+		$sql = "UPDATE {$this->table_name} SET status = %s WHERE id IN ($ids_placeholder)";
+		$parameters = array_merge([$new_status], $reimbursement_ids);
+
+		$result = $this->wpdb->query($this->wpdb->prepare($sql, $parameters));
+
+		// Create an indexed array of reimbursements by their ID
+		$sql = "SELECT id, meta FROM {$this->table_name} WHERE id IN ($ids_placeholder)";
+		$reimbursements = $this->wpdb->get_results($this->wpdb->prepare($sql, $reimbursement_ids));
+
+		$missing_ids=[];
+		foreach ($reimbursements as $reimbursement) {
+
+			$old_status = $reimbursement->status;
+
+			if($old_status===$new_status){
+				continue;
+			}
+			// debug_print('vr_reimbursement_' . $old_status . '_to_' . $new_status);
+			do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $reimbursement, $new_status);
+		}
+		if($result){
+			?>
+			<div class="notice-success notice">
+				<p>Claim status changed to <?php echo(esc_attr($new_status))?> </p>
+			</div>
+			<?php
+		}else{
+			?>
+			<div class="notice-error notice">
+				<p>There was an error in changing the claim status to <?php echo $new_status?></p>
+			</div>
+			<?php
 		}
 
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'volunteer_reimbursements';
+	}
+
+	public function delete_claims($reimbursement_ids){
+		if (empty($reimbursement_ids)) {
+			?>
+			<div class="notice-error notice">
+				<p>No claims were provided for deletion.</p>
+			</div>
+			<?php
+			return;
+		}
+
+		$ids_placeholder = implode(',', array_fill(0, count($reimbursement_ids), '%d'));
+		$sql = "SELECT id, meta FROM {$this->table_name} WHERE id IN ($ids_placeholder)";
+		$claims = $this->wpdb->get_results($this->wpdb->prepare($sql, $reimbursement_ids));
+
+		// Delete attachments listed in the meta field
+		foreach ($claims as $claim) {
+			$meta = json_decode($claim->meta, true); // Decode JSON meta column
+			if (!empty($meta['attachments']) && is_array($meta['attachments'])) {
+				foreach ($meta['attachments'] as $attachment_id => $attachment_url) {
+					// Use WordPress function to delete the attachment
+					if (wp_delete_attachment($attachment_id, true) === false) {
+						error_log("Failed to delete attachment ID: $attachment_id for claim ID: $claim->id");
+					} else {
+						error_log("Successfully deleted attachment ID: $attachment_id for claim ID: $claim->id");
+					}
+				}
+			}
+		}
+
+		$delete_sql = "DELETE FROM {$this->table_name} WHERE id IN ($ids_placeholder)";
+		$result = $this->wpdb->query($this->wpdb->prepare($delete_sql, $reimbursement_ids));
+
+		if($result){
+			$num_deleted = count($reimbursement_ids);
+			?>
+			<div class="notice-success notice">
+				<p><?php echo $num_deleted?> claim<?php ($num_deleted > 1) ? 's' : ''?> deleted </p>
+			</div>
+			<?php
+		}else{
+			?>
+			<div class="notice-error notice">
+				<p>There was an error deleting these claims</p>
+			</div>
+			<?php
+		}
+
+	}
+	
+	public function generate_xero_export($reimbursement_ids) {
+		if(empty($reimbursement_ids)){
+			throw new Exception('No forms selected');
+		}
 
 		$query = sprintf(
-			"SELECT * FROM {$table_name} WHERE id IN (%s)",
+			"SELECT * FROM {$this->table_name} WHERE id IN (%s)",
 			implode(',', array_map('intval', $reimbursement_ids))
 		);
-		$reimbursements = $wpdb->get_results($query);
+		$reimbursements = $this->wpdb->get_results($query);
 		
 		if (empty($reimbursements)) {
-			wp_send_json_error(['status' => 'error', 'message' => 'No valid reimbursements found']);
+			throw new Exception('No valid reimbursements found');
 		}
-		ob_start();
-		$output = fopen('php://output', 'w');
+
+		$temp_dir_suffix =  '/xero_export_temp_' . time();
+		$temp_dir = wp_upload_dir()['basedir'] .$temp_dir_suffix;
+		if (!mkdir($temp_dir, 0755, true)) {
+			throw new Exception('Failed to create temporary directory');
+		}
+
+		$csv_file = $temp_dir . '/xero_export.csv';
+		$output = fopen($csv_file, 'w');
+		// ob_start();
+		// $output = fopen('php://output', 'w');
 	
 		// Write header row
 		$headers = [
@@ -453,117 +494,59 @@ class Volunteer_Reimbursement_Admin {
 			$filtered_xero_bill_note = apply_filters('vr_get_xero_bill_note_'.$reimbursement->form_type, $xero_bill_note, $reimbursement);
 
 			if(count(array_intersect_key($filtered_xero_bill_note, $xero_bill_note)) != count($xero_bill_note)){
-				wp_send_json_error(['status' => 'error', 'message' => 'xero bill note filtering for '.$reimbursement->form_type.'changed the number of keys in the array']);
+				throw new Exception('xero bill note filtering for '.$reimbursement->form_type.'changed the number of keys in the array');
 			}
 
 			fputcsv($output, $filtered_xero_bill_note);
+
+			$reimbursement_folder = $temp_dir . '/' . $reimbursement->id;
+			if (!mkdir($reimbursement_folder, 0755, true)) {
+				throw new Exception('Failed to create reimbursement folder');
+			}
+
+			$attachments = $reimbursement_data['attachments'];
+			if (!empty($attachments)) {
+				foreach ($attachments as $attachment_id => $attachment_url) {
+					$attachment_content = file_get_contents($attachment_url);
+					if ($attachment_content === false) {
+						continue; // Skip if download fails
+					}
+
+					$attachment_file = $reimbursement_folder . '/' . basename($attachment_url);
+					file_put_contents($attachment_file, $attachment_content);
+				}
+			}
+	
 		}
 
 		fclose($output);
-
 		// Capture the output buffer and clean it
-		$csv_content = ob_get_clean();
+		$zip_file = $temp_dir . '/xero_export.zip';
+
+		$zip = new ZipArchive();
+		if ($zip->open($zip_file, ZipArchive::CREATE) === true) {
+			$files = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator($temp_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+				RecursiveIteratorIterator::SELF_FIRST
+			);
+			foreach ($files as $file) {
+				if($file->isDir()){
+					continue;
+				}
+				$file_path = realpath($file);
+				debug_print($file_path);
+				$zip->addFile($file_path, substr($file_path, strlen($temp_dir) + 1));
+			}
+			$zip->close();
+		} else {
+			throw new Exception('Failed to create ZIP file');
+		}
+
+		// array_map('unlink', glob("$temp_dir/*"));
+		// rmdir($temp_dir);
 
 		// Send CSV file as response
-		wp_send_json_success([
-			'status' => 'success',
-			'message' => 'Xero export generated successfully.',
-			'file_content' => base64_encode($csv_content), // Base64 encode for safe transfer
-		]);
-		wp_die();
-
-	}
-
-	public function vr_settings_page() {
-		?>
-		<div class="wrap">
-			<h1><?php esc_html_e('Volunteer Reimbursement Settings', 'text-domain'); ?></h1>
-			<form method="post" action="options.php">
-				<?php
-				settings_fields('vr_settings_group');
-				do_settings_sections('volunteer-reimbursement-settings');
-				submit_button();
-				?>
-			</form>
-		</div>
-		<?php
-	}
-
-	public function vr_register_settings() {
-		// Register the settings
-		register_setting(
-			'vr_settings_group', 
-			'vr_default_bank_name', 
-			array(
-				'type' => 'string',
-				'sanitize_callback' => array($this, 'vr_sanitize_bank_name'),
-				'default' => ''
-			)
-		);
-		register_setting(
-			'vr_settings_group', 
-			'vr_allow_notification_emails', 
-			array(
-				'type' => 'string',
-				'sanitize_callback' => function ($value) {
-					return $value === 'yes' ? 'yes' : 'no';
-				},
-				'default' => 'yes'
-			)
-		);
-	
-		// Add settings section
-		add_settings_section(
-			'vr_settings_section',
-			'General Settings',
-			function () {
-				echo '<p>' . __('Configure the default settings for Volunteer Reimbursement.', 'text-domain') . '</p>';
-			},
-			'volunteer-reimbursement-settings'
-		);
-	
-		// Add Default Bank Name field
-		add_settings_field(
-			'vr_default_bank_name',
-			'Default Bank Name',
-			function () {
-				$value = get_option('vr_default_bank_name', '');
-				echo '<input type="text" id="vr_default_bank_name" maxlength="3" name="vr_default_bank_name" value="' . esc_attr($value) . '" class="regular-text">';
-				echo '<p class="description">Enter a bank name abbreviation (e.g., CBA for Commonwealth Bank). Must be 3 capital letters.</p>';
-			},
-			'volunteer-reimbursement-settings',
-			'vr_settings_section'
-		);
-	
-		// Add Allow Notification Emails field
-		add_settings_field(
-			'vr_allow_notification_emails',
-			'Allow Notification Emails',
-			function () {
-				$value = get_option('vr_allow_notification_emails', 'yes');
-				echo '<label><input type="checkbox" id="vr_allow_notification_emails" name="vr_allow_notification_emails" value="yes" ' . checked($value, 'yes', false) . '> Enable notification emails</label>';
-				echo '<p class="description">Enable email notifications for when the status of a claim changes</p>';
-
-			},
-			'volunteer-reimbursement-settings',
-			'vr_settings_section'
-		);
-	}
-
-	public function vr_sanitize_bank_name($input) {
-		if (preg_match('/^[A-Z]{3}$/', $input)) {
-			return $input; // Valid format
-		}
-	
-		// Add admin notice for invalid input
-		add_settings_error(
-			'vr_default_bank_name',
-			'invalid_bank_name',
-			'Default Bank Name must be exactly 3 capital letters (e.g., CBA).',
-			'error'
-		);
-	
-		return get_option('vr_default_bank_name', ''); // Fallback to the existing value
+		return $zip_file;
 	}
 
 
@@ -575,6 +558,7 @@ class Volunteer_Reimbursement_Admin {
 		$payee_name = $meta['payee_name'];
 		$payee_email = $meta['payee_email'];
 		$purpose = $meta['purpose'];
+		$transaction_details = $meta['transaction_details'] ?? 'N/A';
 		$amount = number_format($meta['amount']['dollars'] + $meta['amount']['cents'] / 100, 2);
 	
 		$subject = sprintf('Your %s claim #%d for %s has been approved', 
@@ -637,6 +621,52 @@ class Volunteer_Reimbursement_Admin {
 		error_log($email_status);
 	}
 
+	public function log_claim_approved_time($reimbursement, $new_status){
+		if ($new_status === 'approved') {
+			// Update the approve_date to the current timestamp
+			$result = $this->wpdb->update(
+				$this->table_name, // Table name
+				['approve_date' => current_time('mysql')], // Data to update
+				['id' => $reimbursement->id], // Where clause
+				['%s'], // Format for the approve_date column
+				['%d']  // Format for the id column
+			);
+	
+			// Check if the update was successful
+			if ($result === false) {
+				error_log('Failed to update approve_date for reimbursement ID: ' . $reimbursement->id);
+			} else {
+				error_log('Successfully updated approve_date for reimbursement ID: ' . $reimbursement->id);
+			}
+		}
+	}
+
+	public function log_claim_paid_time($reimbursement, $new_status){
+		if ($new_status === 'paid') {
+			// Update the approve_date to the current timestamp
+			$result = $this->wpdb->update(
+				$this->table_name, // Table name
+				['paid_date' => current_time('mysql')], // Data to update
+				['id' => $reimbursement->id], // Where clause
+				['%s'], // Format for the approve_date column
+				['%d']  // Format for the id column
+			);
+	
+			// Check if the update was successful
+			if ($result === false) {
+				error_log('Failed to update approve_date for reimbursement ID: ' . $reimbursement->id);
+			} else {
+				error_log('Successfully updated approve_date for reimbursement ID: ' . $reimbursement->id);
+			}
+		}
+	}
+
+	public function rrmdir(string $directory): bool
+	{
+		array_map(fn (string $file) => is_dir($file) ? $this->rrmdir($file) : unlink($file), glob($directory . '/' . '*'));
+
+		return rmdir($directory);
+	}
 
 
 	public function enqueue_styles() {

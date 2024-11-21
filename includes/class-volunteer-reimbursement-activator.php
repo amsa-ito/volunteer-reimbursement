@@ -30,6 +30,14 @@ class Volunteer_Reimbursement_Activator {
 	 * @since    1.0.0
 	 */
 	public static function activate() {
+        Volunteer_Reimbursement_Activator::initialise_database();
+        Volunteer_Reimbursement_Activator::add_manage_volunteer_claims_capability();
+
+        
+        
+	}
+
+    public static function initialise_database(){
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
 
@@ -37,6 +45,8 @@ class Volunteer_Reimbursement_Activator {
         $sql = "CREATE TABLE $table_name (
             id mediumint(9) NOT NULL AUTO_INCREMENT,
             submit_date datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            approve_date datetime NOT NULL,
+            paid_date datetime NOT NULL,
             user_id bigint(20) NOT NULL,
             status varchar(20) NOT NULL DEFAULT 'pending',
             form_type varchar(50) NOT NULL, 
@@ -47,15 +57,17 @@ class Volunteer_Reimbursement_Activator {
 
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
         $result = dbDelta( $sql );
-        
+    }
 
-        
-        // if ( $wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name ) {
-        //     error_log('table '.$table_name.' was not created');
-        // }else{
-        //     error_log('table '.$table_name.' was created');
-        // }
-        
-	}
+    public static function add_manage_volunteer_claims_capability(){
+        $roles = ['administrator', 'shop_manager']; // You can add more roles if needed
+
+        foreach ($roles as $role_name) {
+            $role = get_role($role_name);
+            if ($role) {
+                $role->add_cap('manage_volunteer_claims');
+            }
+        }
+    }
 
 }

@@ -8,7 +8,9 @@ class VR_Reimbursement_Form{
 
 		add_filter('vr_get_transaction_'.$this->form_type, array($this, "get_transaction_record"), 10, 2);
 		add_filter('vr_get_xero_bill_note_'.$this->form_type, array($this, "get_xero_bill_note"), 10, 2);
-
+		
+		add_filter('vr_display_public_'.$this->form_type, array($this,"display_public_form"), 10, 1);
+		add_filter('vr_display_admin_'.$this->form_type, array($this,"display_admin_form"), 10, 2);
 
 	}
 
@@ -112,5 +114,19 @@ class VR_Reimbursement_Form{
 		$xero_bill_note['*UnitAmount'] = $reimbursement_data->amount->dollars+ $reimbursement_data->amount->cents/100;
 		
 		return $xero_bill_note;
+	}
+
+	public function display_public_form($content){
+		ob_start();
+		require_once(VR_PLUGIN_PATH . 'public/partials/reimbursement-form.php');
+		
+		return ob_get_clean();
+	}
+
+	public function display_admin_form($content, $claim){
+		ob_start();
+		require_once(VR_PLUGIN_PATH . 'admin/partials/reimbursement-form.php');
+		
+		return ob_get_clean();
 	}
 }

@@ -94,43 +94,9 @@ class Volunteer_Reimbursement_My_Account {
             "SELECT * FROM $table_name WHERE user_id = %d ORDER BY submit_date DESC",
             $user_id
         ));
-    
-        echo '<h2>Your Reimbursement Claims</h2>';
-    
-        if ($claims) {
-            echo '<table class="woocommerce-orders-table woocommerce-MyAccount-orders shop_table shop_table_responsive">';
-            echo '<thead>';
-            echo '<tr>';
-            echo '<th>Form ID</th>';
-            echo '<th>Submit Date</th>';
-            echo '<th>Status</th>';
-            echo '<th>Form Type</th>';
-            echo '<th>Purpose</th>';
-            echo '<th>Transaction Details</th>';
-            echo '</tr>';
-            echo '</thead>';
-            echo '<tbody>';
-    
-            foreach ($claims as $claim) {
-                $claim_meta = json_decode($claim->meta, true); // Decode the meta JSON
-                $purpose = isset($claim_meta['purpose']) ? esc_html($claim_meta['purpose']) : 'N/A';
-                $transaction_details = isset($claim_meta['transaction_details']) ? esc_html($claim_meta['transaction_details']) : 'N/A';
-    
-                echo '<tr>';
-                echo '<td>' . esc_html($claim->id) . '</td>';
-                echo '<td>' . esc_html(date('Y-m-d', strtotime($claim->submit_date))) . '</td>';
-                echo '<td>' . MetaDataFormatter::format_status_colored($claim->status) . '</td>';
-                echo '<td>' . MetaDataFormatter::format_form_type($claim->form_type) . '</td>';
-                echo '<td>' . $purpose . '</td>';
-                echo '<td>' . $transaction_details . '</td>';
-                echo '</tr>';
-            }
-    
-            echo '</tbody>';
-            echo '</table>';
-        } else {
-            echo '<p>You have no reimbursement claims.</p>';
-        }
+        
+        require_once VR_PLUGIN_PATH . 'public/partials/my-account.php';
+
     }
 
     public function add_reimbursement_claims_endpoint() {

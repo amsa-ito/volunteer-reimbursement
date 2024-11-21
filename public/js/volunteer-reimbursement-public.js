@@ -28,6 +28,8 @@
 	 * Although scripts in the WordPress core, Plugins and Themes may be
 	 * practising this, we should strive to set a better example in our own work.
 	 */
+	var spinner='<div class="loading-spinner" id="loading-spinnner"></div>';
+
 	let formSubmittedSuccessfully = false;
 
 	$('#form-content').on('focus', '.rv-form-group input[data-helper], .rv-form-group textarea[data-helper]', function() {
@@ -38,7 +40,7 @@
 		// Create a new helper text element
 		const helperText = $('<div></div>')
 			.addClass('helper-text')
-			.text($(this).data('helper'));
+			.html($(this).data('helper'));
 	
 		// Append the helper text to the end of the .rv-form-group container
 		$(this).parent().append(helperText);
@@ -70,12 +72,26 @@
 		// Trigger the change event to apply the logic when elements are present on load
 		$('#payee_committee').trigger('change');
 	}
+
+	$('#form-content').on('focus', '.amount-input', function () {
+		if ($(this).val() === "0" || $(this).val() === "00") {
+			$(this).val('');
+		}
+	});
+
+	$('#form-content').on('blur', '.amount-input', function () {
+		if ($(this).val() === '') {
+			$(this).val($(this).attr('name') === 'dollars' ? '0' : '00');
+		}
+	});
 	
 
 	$('#payment-type-form').on('submit', function(e) {
 		e.preventDefault();
 		
 		var paymentType = $('#payment_type').val();
+		
+		$('#form-content').html(spinner);
 
 		// AJAX request to process the form
 		$.ajax({
@@ -88,20 +104,21 @@
 			},
 			success: function(response) {
 				// Display the response inside the #form-content div
-				$('#form-content').html(response);
+				$('#form-content').html(response.data['content']);
 			},
 			error: function() {
-				console.log(Theme_Variables.ajax_url);
-				console.log(Theme_Variables.nonce);
-
 				$('#form-content').html('<p style="color:red;">There was an error processing your request. Please try again.</p>');
 			}
+		}).always(function(){
+			$('.loading-spinner').remove();
 		});
 	});
 
 	$('#form-content').on('submit', '#reimbursement-form', function(e) {
 		e.preventDefault();
-		
+		$('#reimbursement-form').append('<div id="form-response"></div>');
+
+		$('#form-response').append(spinner);
 		// Collect form data
 		var formData = new FormData(this); // Use FormData to handle files and text fields automatically
 		
@@ -136,6 +153,9 @@
 				console.error("AJAX Error:", textStatus, errorThrown);
 				$('#form-response').html('<p style="color:red;">There was an error processing your request. Please try again later.</p>');
 			}
+		}).always(function(){
+			$('#form-response').find('.loading-spinner').remove();
+
 		});
 	});
 
@@ -180,6 +200,8 @@
 		uploadedFiles.splice(fileIndex, 1);
 		updateFileList();
 	});
+
+
 
 	
 })( jQuery );

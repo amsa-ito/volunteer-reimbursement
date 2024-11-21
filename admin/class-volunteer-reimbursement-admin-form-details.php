@@ -12,18 +12,6 @@ class Volunteer_Reimbursement_Admin_Form_Details{
         add_action('wp_ajax_save_admin_claim_form', array($this, 'save_vr_claim_form'));
         add_action('wp_ajax_nopriv_save_admin_claim_form', array($this, 'save_vr_claim_form'));
 
-
-		add_filter('vr_render_meta_field_comments', array($this, 'render_meta_comments'), 10, 3);
-		add_filter('vr_render_meta_field_amount', array($this, 'render_meta_amount'), 10, 3);
-		add_filter('vr_render_meta_field_attachments', array($this, 'render_meta_attachments'), 10, 3);
-		add_filter('vr_render_meta_field_due_date', array($this, 'render_meta_due_date'), 10, 3);
-		add_filter('vr_render_meta_field_payee_committee', array($this, 'render_meta_payee_committee'), 10, 3);
-
-
-		add_filter('vr_render_meta_field_payee_email', array($this, 'render_meta_email_feild'), 10, 3);
-		add_filter('vr_render_meta_field_supplier_email', array($this, 'render_meta_email_feild'), 10, 3);
-		add_filter('vr_render_meta_field_additional_email', array($this, 'render_meta_email_feild'), 10, 3);
-
     }
 
 	public function vr_admin_detail_page() {
@@ -31,7 +19,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 			null, // No menu item in the sidebar
 			'Reimbursement Form Details',
 			'Reimbursement Form Details',
-			'edit_posts',
+			'manage_volunteer_claims',
 			'vr_reimbursement_detail',
 			array($this,'render_vr_reimbursement_detail_page')
 		);
@@ -39,10 +27,9 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 
     public function save_vr_claim_form(){
 		// check_ajax_referer($this->plugin_name.'-nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['status'=>'error', 'message'=>'You do not have permission to edit this form.']);
-        }
+		if (!current_user_can('manage_volunteer_claims')){
+			wp_send_json_error([ 'status' => 'error', 'message' => 'You do not have sufficient permissions.' ] );
+		}
 
         global $wpdb;
         $table_name = $wpdb->prefix . 'volunteer_reimbursements';
@@ -57,7 +44,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 
         $form_type = $reimbursement->form_type;
 
-        $form_data = apply_filters('vr_parse_'. $form_type ,$_POST['meta'], $_FILES);
+        $form_data = apply_filters('vr_parse_'. $form_type ,$_POST, $_FILES);
 
         $new_status = sanitize_text_field($_POST['status']);
         
@@ -73,7 +60,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 
 		$user_id = $reimbursement->id;
 		if(isset($form_data['payee_email'])){
-			$user_by_email = get_user_by('email', $form_data['payee_email'])
+			$user_by_email = get_user_by('email', $form_data['payee_email']);
 			if($user_by_email){
 				$user_id = $user_by_email ->id;
 			}
@@ -90,12 +77,11 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 			if($new_status != $old_status){
 				do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $reimbursement, $new_status);
 			}
-            wp_send_json_success(['status' => 'success', 'message' => 'Claim submitted successfully!']);
+            wp_send_json_success(['status' => 'success', 'message' => 'Claim saved successfully!']);
 
         } else {
             wp_send_json_error(['status'=>'error','message'=>'Failed to update the form.']);
         }
-        wp_send_json_success(['status' => 'success', 'message' => 'Claim submitted successfully!']);
 
         wp_die();
     }
@@ -114,77 +100,10 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 			wp_die('Reimbursement form not found.');
 		}
 
-		$meta_data = json_decode($reimbursement->meta, true) ?: [];
-
-		if (!array_key_exists('comments', $meta_data)) {
-			$meta_data['comments'] = '';
-		}
+		require_once(VR_PLUGIN_PATH . "admin/partials/claim-details-page.php");
 	
-		echo '<div class="wrap">';
-		echo '<h1>Reimbursement Form Details</h1>';
-		echo '<form method="post" id="vr-reimbursement-form">';
-        echo '<input type="hidden" name="action" value="save_admin_claim_form">';
-        echo '<input type="hidden" name="form_id" value="'.$form_id.'">';
-
-	
-		echo '<table class="form-table">';
-
-		$user_name = get_userdata($reimbursement->user_id)->display_name;
-		$user_profile_url = get_edit_user_link($reimbursement->user_id);
-
-		echo '<tr><th>User</th><td>' . sprintf('<a href="%s" target="_blank">%s</a>', esc_url($user_profile_url), esc_html($user_name)) . '</td></tr>';
-		echo '<tr><th>Submit Date</th><td>' . esc_html(date('Y-m-d', strtotime($reimbursement->submit_date))) . '</td></tr>';
-		echo '<tr><th>Status</th><td>';
-		echo '<select name="status">';
-		echo '<option value="pending" ' . selected($reimbursement->status, 'pending', false) . '>Pending</option>';
-		echo '<option value="approved" ' . selected($reimbursement->status, 'approved', false) . '>Approved</option>';
-		echo '<option value="paid" ' . selected($reimbursement->status, 'paid', false) . '>Paid</option>';
-		echo '</select></td></tr>';
-		echo '</table>';
-	
-		// Display meta fields with recursive function
-		echo '<h2>Form data</h2>';
-		echo '<table class="form-table">';
-		$this->render_meta_fields($meta_data);
-		echo '</table>';
-	
-		echo '<p class="submit"><input type="submit" class="button-primary" value="Save Changes"></p>';
-		echo '</form>';
-        echo '<div id="form-response"></div>';
-		echo '</div>';
 	}
 
-    function render_meta_fields($meta_data) {
-		foreach ($meta_data as $field_name => $value) {
-			
-			echo '<tr><th>' . esc_html(ucwords(str_replace('_', ' ', $field_name))) . '</th><td>';
-	
-			$field_html = apply_filters("vr_render_meta_field_$field_name", '<input type="text" id="'.esc_attr($field_name).'" name="meta[' . esc_attr($field_name) . ']" value="' . esc_attr($value) . '" />', $field_name, $value);
-			echo $field_html;
-	
-			echo '</td></tr>';
-		}
-	}
-
-    public function render_meta_comments($default_html, $field_name, $value) {
-		return '<textarea name="meta['.esc_attr($field_name).']">' . esc_textarea($value) . '</textarea>'; 
-	}
-
-	public function render_meta_amount($default_html, $field_name, $value){
-		ob_start();
-		?>
-		<div class="amount-claimed-container">
-        <label for="dollars">Dollars </label><label for="cents">Cents </label>
-        <div class="amount-inputs">
-            <span>$</span>
-            <input type="number" name="meta[dollars]" id="dollars" class="amount-input" placeholder="0" min="0" required value="<?php echo esc_attr($value['dollars']); ?>">
-            <span class="separator">.</span>
-            <input type="number" name="meta[cents]" id="cents" class="amount-input" placeholder="00" min="0" max="99" required value="<?php echo esc_attr($value['cents']); ?>">
-        </div>
-    </div>
-	<?php
-	return ob_get_clean();
-	}
 
 	public function render_meta_attachments($default_html, $field_name, $value){
 
@@ -206,7 +125,9 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 
 		ob_start();
 		?>
-		<input type="file" id="rv-multiple-file-input" name="meta[<?php echo esc_attr($field_name) ?>][]" accept="image/*,.pdf" multiple>
+		<label for="rv-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.<span class="required">*</span></label>
+
+		<input type="file" id="rv-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
 		<!-- List of uploaded files -->
 		<ul id="rv-file-list">
 
@@ -220,16 +141,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		return ob_get_clean();
 
 	}
-
-	public function render_meta_due_date($default_html, $field_name, $value){
-		return '<input type="date" name="meta['.esc_attr($field_name).']" id="'.esc_attr($field_name).'" required value="'.$value.'" />';
-	}
-
-	public function render_meta_email_feild($default_html, $field_name, $value){
-		return '<input type="email" name="meta['.esc_attr($field_name).']" id="'.esc_attr($field_name).'" value="'.$value.'" />';
-	}
-
-	public function render_meta_payee_committee($default_html, $field_name, $value){
+	public function render_meta_payee_committee($value){
 		$options = [
 			"AMSA Reps", "AMSA Global Health Committee", "AMSA Rural Health Committee", "Board of Directors",
 			"Convention 2022", "Convention 2023", "Executive", "Careers Conference 23", "AMSA Indigenous Health",
@@ -242,7 +154,8 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		
 		ob_start();
 		?>
-		<select id="payee_committee" name="meta[payee_committee]" required>
+		<label for="payee_committee">Select Committee<span class="required">*</span></label>
+		<select id="payee_committee" name="payee_committee" required>
 			<?php foreach ($options as $option): ?>
 				<option value="<?php echo esc_attr($option); ?>" 
 					<?php echo ($value === $option || ($isOther && $option === "Other")) ? 'selected' : ''; ?>>
@@ -252,7 +165,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		</select>
 
 		<input type="text" id="payee-other-committee" 
-           name="meta[payee_other_committee]" 
+           name="payee_other_committee" 
            placeholder="Please specify the committee"
            style="display: <?php echo $isOther ? 'block' : 'none'; ?>; margin-top: 10px;"
            value="<?php echo $isOther ? esc_attr($value) : ''; ?>">

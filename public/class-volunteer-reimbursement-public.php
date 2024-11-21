@@ -77,16 +77,20 @@ class Volunteer_Reimbursement_Public {
 		// Check if the payment type is set in the request
 		if (isset($_POST['payment_type'])) {
 			$payment_type = sanitize_text_field($_POST['payment_type']);
-			
-			// Load the appropriate template based on payment type
-			if ($payment_type === 'volunteer_reimbursement') {
-				include VR_PLUGIN_PATH . 'public/partials/reimbursement-form.php'; // Adjust the path as needed
-			} elseif ($payment_type === 'payment_request') {
-				include VR_PLUGIN_PATH . 'public/partials/payment-request.php'; // Adjust the path as needed
-			} else {
+
+			$content = "";
+			$content = apply_filters('vr_display_public_'.$payment_type, $content);
+			debug_print('vr_display_public_'.$payment_type);
+			wp_send_json_success(['status' => 'success', 'content' => $content]);
+			// // Load the appropriate template based on payment type
+			// if ($payment_type === 'volunteer_reimbursement') {
+			// 	include VR_PLUGIN_PATH . 'public/partials/reimbursement-form.php'; // Adjust the path as needed
+			// } elseif ($payment_type === 'payment_request') {
+			// 	include VR_PLUGIN_PATH . 'public/partials/payment-request.php'; // Adjust the path as needed
+			// } else {
 				
-				wp_send_json_error('<p style="color:red;">Invalid payment type selected.</p>');
-			}
+			// 	wp_send_json_error('<p style="color:red;">Invalid payment type selected.</p>');
+			// }
 		} else {
 			wp_send_json_error('<p style="color:red;">No payment type selected.</p>');
 		}
@@ -109,7 +113,7 @@ class Volunteer_Reimbursement_Public {
 		$status = 'pending';
 
 		if ( !isset($_POST['form_type']) || !$_POST['form_type'] ) {
-			wp_send_json_error( ['status'=> 'error','message'=> 'Missing form type field in form, must be a mis-created form'] );
+			wp_send_json_error( ['status'=> 'error','message'=> 'Missing claim type field in form, must be a mis-created form'] );
 		}
 
 		$form_type = $_POST['form_type'];
@@ -125,8 +129,8 @@ class Volunteer_Reimbursement_Public {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'volunteer_reimbursements';
 
-		if($user_id<=0 $$ isset($form_data['payee_email'])){
-			$user_by_email = get_user_by('email', $form_data['payee_email'])
+		if($user_id<=0 && isset($form_data['payee_email'])){
+			$user_by_email = get_user_by('email', $form_data['payee_email']);
 			if($user_by_email){
 				$user_id = $user_by_email ->id;
 			}

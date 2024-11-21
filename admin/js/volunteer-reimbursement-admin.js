@@ -1,6 +1,8 @@
 (function( $ ) {
 	'use strict';
 
+	var spinner='<div class="loading-spinner" id="loading-spinnner"></div>';
+
 	// let uploadedFiles = {};
 	// variable uploadedFiles is passed from php
 
@@ -16,7 +18,6 @@
 		// Add new files to the uploaded files list
 		newFiles.forEach(file => {
 			let fileExists = Object.values(uploadedFiles).some(f => f.name === file.name && f.size === file.size);
-			console.log(file);
 			if (!fileExists) {
 				uploadedFiles[file.name] = {
 					name: file.name,
@@ -41,7 +42,7 @@
 			if (uploadedFiles.hasOwnProperty(fileName)) {
 				let fileData = uploadedFiles[fileName];
 				$('#rv-file-list').append(`<li><a href="${fileData.url}" target="_blank">${fileData.name}</a>
-					<button data-index="${fileName}" class="remove-btn">Remove</button></li>`);
+					<button data-index="${fileName}" class="remove-btn button">Remove</button></li>`);
 			}
 		}
 	}
@@ -55,7 +56,7 @@
 
 	$('#vr-reimbursement-form').on('submit', function(e) {
         e.preventDefault(); // Prevent default form submission
-
+		$('#form-response').html(spinner);
         // let formData = $(this).serializeArray();
 		var formData = new FormData(this);
 
@@ -94,6 +95,9 @@
 				console.error("AJAX Error:", textStatus, errorThrown);
 				$('#form-response').html('<p style="color:red;">There was an error processing your request. Please try again later.</p>');
 			}
+		}).always(function(){
+			$('#form-response').find('.loading-spinner').remove();
+
 		});
     });
 
@@ -138,6 +142,13 @@
 
 	$("#vr_reimbursement_table").on('click', "#submit_aba_export", function(e){
         e.preventDefault(); // Prevent default form submission
+
+		var submitButton = $(this);
+		var wrapper = submitButton.parent();
+
+		submitButton.prop('disabled', true);
+		wrapper.append(spinner);
+
 		var formData = new FormData($('#vr_reimbursement_table').get(0));
 		formData.set('action', 'submit_aba_export');
 		$.ajax({
@@ -166,45 +177,39 @@
 				console.error("AJAX Error:", textStatus, errorThrown);
 				$('#form-response').html('<p style="color:red;">There was an error processing your request. Please try again later.</p>');
 			}
+		}).always(function(){
+			submitButton.prop('disabled', false);
+			wrapper.find('.loading-spinner').remove();
+
 		});
 
 	});
 
 	$('#export_xero').on('click', function(e){
 		e.preventDefault();
-		var formData = new FormData($('#vr_reimbursement_table').get(0));
-		formData.set('action', 'export_xero');
-		$.ajax({
-			url: Theme_Variables.ajax_url,
-			type: 'POST',
-			data: formData,
-			processData: false,
-			contentType: false,
-			success: function(response){
-				if (response.data['status'] ==='success'){
-					// $('#form-response').html('<p style="color:green;">' + response.data['message'] + '</p>');
-					const csvContent = atob(response.data.file_content);
+        var submitButton = $(this);
+		var wrapper = submitButton.parent();
 
-					const blob = new Blob([csvContent], { type: 'text/csv' });
-					const downloadLink = document.createElement('a');
-					downloadLink.href = window.URL.createObjectURL(blob);
-					downloadLink.download = 'xero_export.csv'; // File name
-					document.body.appendChild(downloadLink);
-					downloadLink.click();
-					document.body.removeChild(downloadLink);
+        submitButton.prop('disabled', true);
+		wrapper.append(spinner);
 
-				}else{
-					// $('#form-response').html('<p style="color:red;">' + response.data['message'] + '</p>');
-					console.log(response.data['message']);
-					alert(response.data['message']);
-				}
-			},
-			error: function(jqXHR, textStatus, errorThrown) {
-				console.error("AJAX Error:", textStatus, errorThrown);
-				alert("There was an error processing your request. Please try again later.");
-				// $('#form-response').html('<p style="color:red;">There was an error processing your request. Please try again later.</p>');
-			}
-		});
+		// Get the form element
+		var actionSelect = $('#bulk-action-selector-top');
+
+		// Add 'export_xero' as an option if it doesn't already exist
+		if (actionSelect.find('option[value="export_xero"]').length === 0) {
+			actionSelect.append('<option value="export_xero">Export to Xero</option>');
+		}
+	
+		// Select the 'export_xero' option
+		actionSelect.val('export_xero');
+
+		// Find an existing input[name="action"], if any
+		// form.action='export_xero';
+		$('#vr_reimbursement_table').get(0).submit();
+
+		submitButton.prop('disabled', false);
+		wrapper.find('.loading-spinner').remove();
 
 	});
 

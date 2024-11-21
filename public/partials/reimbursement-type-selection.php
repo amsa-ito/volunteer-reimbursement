@@ -47,7 +47,7 @@
         $display_name = $current_user->display_name;
         
         // Display a message for logged-in users
-        echo '<p>You are currently logged in as <strong>' . esc_html( $display_name ) . '</strong>. Check your <a href="#">reimbursement tickets here</a>.</p>';
+        echo '<p>You are currently logged in as <strong>' . esc_html( $display_name ) . '</strong>. Check your <a href="'.wc_get_account_endpoint_url( 'reimbursement-claims' ).'">existing claims here</a>.</p>';
     } 
     ?>
     <form id="payment-type-form" method="post">
@@ -55,19 +55,17 @@
         <label for="payment_type">Select Payment Type:</label>
         <select id="payment_type" name="payment_type" required>
             <option value="">-- Choose an option --</option>
-            <option value="volunteer_reimbursement">Volunteer Reimbursement</option>
+            <option value="reimbursement">Volunteer Reimbursement</option>
             <option value="payment_request">Payment Request</option>
         </select>
         <button type="submit">Submit</button>
     </form>
     <div id="form-content"></div>
     
-    <div id="form-response"></div>
+    
 <?php
-// TODO spinning wheel in all form submissions
 // TODO form validate as you type
-// TODO dollar amount to enable instant typing
-// TODO xero export format to include attachments
-// TODO store approval date, paid date
-// TODO table have more columns
+// TODO adjust permissions for who can approve and pay claims
+// TODO what to do about Optional additional email for receipt
+// TODO payment request what to do about bpay number and stuff
 ?>

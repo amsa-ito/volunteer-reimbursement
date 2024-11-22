@@ -100,7 +100,7 @@ class Volunteer_Reimbursement_Admin {
 
 	public function vr_admin_menu() {
 		add_menu_page(
-			'Volunteer Reimbursement',
+			'Claims',
 			'Reimbursement',
 			'manage_volunteer_claims',
 			'volunteer-reimbursement',
@@ -112,19 +112,19 @@ class Volunteer_Reimbursement_Admin {
 
 	public function vr_admin_page() {
 		// Handle delete action
-		if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['reimbursement_id'])) {
-			$reimbursement_id = absint($_GET['reimbursement_id']);
+		if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['claim_id'])) {
+			$claim_id = absint($_GET['claim_id']);
 	
 			// Verify nonce
-			if (!wp_verify_nonce($_GET['_wpnonce'], 'delete_reimbursement_' . $reimbursement_id)) {
+			if (!wp_verify_nonce($_GET['_wpnonce'], 'delete_claim_' . $claim_id)) {
 				wp_die(__('Invalid nonce specified.', 'vr-plugin'));
 			}
 	
 			// Perform the delete action
-			$this->delete_claims([$reimbursement_id]);
+			$this->delete_claims([$claim_id]);
 	
 			// Redirect back to prevent duplicate actions on refresh
-			wp_redirect(remove_query_arg(['action', 'reimbursement_id', '_wpnonce']));
+			wp_redirect(remove_query_arg(['action', 'claim_id', '_wpnonce']));
 			exit;
 		}
 
@@ -145,9 +145,9 @@ class Volunteer_Reimbursement_Admin {
 		}
 		$query .= " ORDER BY submit_date DESC";
 
-		if (isset($_POST['action']) && $_POST['action'] !== -1 && $_POST['reimbursement_ids']) {
+		if (isset($_POST['action']) && $_POST['action'] !== -1 && $_POST['claim_ids']) {
 			$action = $_POST['action'];
-			$reimbursement_ids = $_POST['reimbursement_ids'] ?? [];
+			$claim_ids = $_POST['claim_ids'] ?? [];
 
 			$new_status = null;
 			if ($action === 'status_pending') {
@@ -160,10 +160,10 @@ class Volunteer_Reimbursement_Admin {
 
 			// Apply the status change or delete as necessary
 			if ($action === 'delete') {
-				$this->delete_claims($reimbursement_ids);
+				$this->delete_claims($claim_ids);
 
 			} elseif ($action === 'export_xero'){
-				$zip_file = $this->generate_xero_export($reimbursement_ids);
+				$zip_file = $this->generate_xero_export($claim_ids);
 				
 				header('Content-Type: application/zip');
 				header('Content-Transfer-Encoding: binary');
@@ -176,18 +176,18 @@ class Volunteer_Reimbursement_Admin {
 				$this->rrmdir(dirname($zip_file));
 
 			}elseif ($new_status) {
-				$this->update_new_status($new_status, $reimbursement_ids);
+				$this->update_new_status($new_status, $claim_ids);
 			}
 	
 			// refresh page data after performing actions
-			$reimbursements = $this->wpdb->get_results($query);
+			$claims = $this->wpdb->get_results($query);
 		}else{
-			$reimbursements = $this->wpdb->get_results($query);
+			$claims = $this->wpdb->get_results($query);
 
 		}	
 
 		echo '<div class="wrap">';
-		echo '<h1>Volunteer Reimbursements</h1>';
+		echo '<h1>Claims</h1>';
 
 		// Filter by form type
 		echo '<form method="get">';
@@ -229,10 +229,10 @@ class Volunteer_Reimbursement_Admin {
 		echo '</ul>';
 	
 		// Display the list table
-		$reimbursements_table = new VR_Reimbursements_Table($reimbursements);
-		$reimbursements_table->prepare_items();
+		$claims_table = new VR_Reimbursements_Table($claims);
+		$claims_table->prepare_items();
 		echo '<form method="post" id="vr_reimbursement_table">';
-		$reimbursements_table->display();
+		$claims_table->display();
 		echo '</form>';
 	
 		echo '</div>';
@@ -251,8 +251,8 @@ class Volunteer_Reimbursement_Admin {
 			wp_send_json_error([ 'status' => 'error', 'message' => 'You do not have sufficient permissions.' ] );
 		}
 
-		$reimbursement_ids = $_POST['reimbursement_ids'] ?? [];
-		if(empty($reimbursement_ids)){
+		$claim_ids = $_POST['claim_ids'] ?? [];
+		if(empty($claim_ids)){
 			wp_send_json_error([ 'status' => 'error', 'message' => 'No forms selected' ] );
 		}
 
@@ -302,20 +302,20 @@ class Volunteer_Reimbursement_Admin {
 
 		$query = sprintf(
 			"SELECT * FROM {$this->table_name} WHERE id IN (%s)",
-			implode(',', array_map('intval', $reimbursement_ids))
+			implode(',', array_map('intval', $claim_ids))
 		);
-		$reimbursements = $this->wpdb->get_results($query);
+		$claims = $this->wpdb->get_results($query);
 
-		if (empty($reimbursements)) {
-			wp_send_json_error(['status' => 'error', 'message' => 'No valid reimbursements found']);
+		if (empty($claims)) {
+			wp_send_json_error(['status' => 'error', 'message' => 'No valid claims found']);
 		}
 
 		$transactions = [];
-		foreach($reimbursements as $reimbursement) {
-			$reimbursement_data = json_decode($reimbursement->meta);
+		foreach($claims as $claim) {
+			$claim_data = json_decode($claim->meta);
 
 			$transaction = new Transaction();
-			$transaction = apply_filters('vr_get_transaction_'.$reimbursement->form_type, $transaction, $reimbursement);
+			$transaction = apply_filters('vr_get_transaction_'.$claim->form_type, $transaction, $claim);
 
 			$transactions[] = $transaction;
 			// $generator->addTransaction($transaction);
@@ -340,27 +340,27 @@ class Volunteer_Reimbursement_Admin {
 		wp_die();
 	}
 
-	public function update_new_status($new_status, $reimbursement_ids){
-		$ids_placeholder = implode(',', array_fill(0, count($reimbursement_ids), '%d'));
+	public function update_new_status($new_status, $claim_ids){
+		$ids_placeholder = implode(',', array_fill(0, count($claim_ids), '%d'));
 		$sql = "UPDATE {$this->table_name} SET status = %s WHERE id IN ($ids_placeholder)";
-		$parameters = array_merge([$new_status], $reimbursement_ids);
+		$parameters = array_merge([$new_status], $claim_ids);
 
 		$result = $this->wpdb->query($this->wpdb->prepare($sql, $parameters));
 
 		// Create an indexed array of reimbursements by their ID
 		$sql = "SELECT id, meta FROM {$this->table_name} WHERE id IN ($ids_placeholder)";
-		$reimbursements = $this->wpdb->get_results($this->wpdb->prepare($sql, $reimbursement_ids));
+		$claims = $this->wpdb->get_results($this->wpdb->prepare($sql, $claim_ids));
 
 		$missing_ids=[];
-		foreach ($reimbursements as $reimbursement) {
+		foreach ($claims as $claim) {
 
-			$old_status = $reimbursement->status;
+			$old_status = $claim->status;
 
 			if($old_status===$new_status){
 				continue;
 			}
 			// debug_print('vr_reimbursement_' . $old_status . '_to_' . $new_status);
-			do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $reimbursement, $new_status);
+			do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $claim, $new_status);
 		}
 		if($result){
 			?>
@@ -378,8 +378,8 @@ class Volunteer_Reimbursement_Admin {
 
 	}
 
-	public function delete_claims($reimbursement_ids){
-		if (empty($reimbursement_ids)) {
+	public function delete_claims($claim_ids){
+		if (empty($claim_ids)) {
 			?>
 			<div class="notice-error notice">
 				<p>No claims were provided for deletion.</p>
@@ -388,9 +388,9 @@ class Volunteer_Reimbursement_Admin {
 			return;
 		}
 
-		$ids_placeholder = implode(',', array_fill(0, count($reimbursement_ids), '%d'));
+		$ids_placeholder = implode(',', array_fill(0, count($claim_ids), '%d'));
 		$sql = "SELECT id, meta FROM {$this->table_name} WHERE id IN ($ids_placeholder)";
-		$claims = $this->wpdb->get_results($this->wpdb->prepare($sql, $reimbursement_ids));
+		$claims = $this->wpdb->get_results($this->wpdb->prepare($sql, $claim_ids));
 
 		// Delete attachments listed in the meta field
 		foreach ($claims as $claim) {
@@ -408,10 +408,10 @@ class Volunteer_Reimbursement_Admin {
 		}
 
 		$delete_sql = "DELETE FROM {$this->table_name} WHERE id IN ($ids_placeholder)";
-		$result = $this->wpdb->query($this->wpdb->prepare($delete_sql, $reimbursement_ids));
+		$result = $this->wpdb->query($this->wpdb->prepare($delete_sql, $claim_ids));
 
 		if($result){
-			$num_deleted = count($reimbursement_ids);
+			$num_deleted = count($claim_ids);
 			?>
 			<div class="notice-success notice">
 				<p><?php echo $num_deleted?> claim<?php ($num_deleted > 1) ? 's' : ''?> deleted </p>
@@ -427,19 +427,19 @@ class Volunteer_Reimbursement_Admin {
 
 	}
 	
-	public function generate_xero_export($reimbursement_ids) {
-		if(empty($reimbursement_ids)){
+	public function generate_xero_export($claim_ids) {
+		if(empty($claim_ids)){
 			throw new Exception('No forms selected');
 		}
 
 		$query = sprintf(
 			"SELECT * FROM {$this->table_name} WHERE id IN (%s)",
-			implode(',', array_map('intval', $reimbursement_ids))
+			implode(',', array_map('intval', $claim_ids))
 		);
-		$reimbursements = $this->wpdb->get_results($query);
+		$claims = $this->wpdb->get_results($query);
 		
-		if (empty($reimbursements)) {
-			throw new Exception('No valid reimbursements found');
+		if (empty($claims)) {
+			throw new Exception('No valid claims found');
 		}
 
 		$temp_dir_suffix =  '/xero_export_temp_' . time();
@@ -462,8 +462,8 @@ class Volunteer_Reimbursement_Admin {
 		];
 		fputcsv($output, $headers);
 
-		foreach ($reimbursements as $reimbursement) {
-			$reimbursement_data = json_decode($reimbursement->meta, true); // Decode meta field
+		foreach ($claims as $claim) {
+			$claim_data = json_decode($claim->meta, true); // Decode meta field
 
 			$xero_bill_note = [
                 '*ContactName' => "",
@@ -476,7 +476,7 @@ class Volunteer_Reimbursement_Admin {
                 'PORegion' => "",
                 'POPostalCode' =>  '',
                 'POCountry' =>  '',
-                '*InvoiceNumber' => $reimbursement->id,
+                '*InvoiceNumber' => $claim->id,
                 '*InvoiceDate' => date('d/m/Y'),
                 '*DueDate' => date('d/m/Y'),
                 'InventoryItemCode' => '', // Optional field, set to empty
@@ -491,20 +491,20 @@ class Volunteer_Reimbursement_Admin {
                 'TrackingOption2' => '',
                 'Currency' => ''
             ];
-			$filtered_xero_bill_note = apply_filters('vr_get_xero_bill_note_'.$reimbursement->form_type, $xero_bill_note, $reimbursement);
+			$filtered_xero_bill_note = apply_filters('vr_get_xero_bill_note_'.$claim->form_type, $xero_bill_note, $claim);
 
 			if(count(array_intersect_key($filtered_xero_bill_note, $xero_bill_note)) != count($xero_bill_note)){
-				throw new Exception('xero bill note filtering for '.$reimbursement->form_type.'changed the number of keys in the array');
+				throw new Exception('xero bill note filtering for '.$claim->form_type.'changed the number of keys in the array');
 			}
 
 			fputcsv($output, $filtered_xero_bill_note);
 
-			$reimbursement_folder = $temp_dir . '/' . $reimbursement->id;
-			if (!mkdir($reimbursement_folder, 0755, true)) {
-				throw new Exception('Failed to create reimbursement folder');
+			$claim_folder = $temp_dir . '/' . $claim->id;
+			if (!mkdir($claim_folder, 0755, true)) {
+				throw new Exception('Failed to create claim folder');
 			}
 
-			$attachments = $reimbursement_data['attachments'];
+			$attachments = $claim_data['attachments'];
 			if (!empty($attachments)) {
 				foreach ($attachments as $attachment_id => $attachment_url) {
 					$attachment_content = file_get_contents($attachment_url);
@@ -512,7 +512,7 @@ class Volunteer_Reimbursement_Admin {
 						continue; // Skip if download fails
 					}
 
-					$attachment_file = $reimbursement_folder . '/' . basename($attachment_url);
+					$attachment_file = $claim_folder . '/' . basename($attachment_url);
 					file_put_contents($attachment_file, $attachment_content);
 				}
 			}
@@ -550,11 +550,11 @@ class Volunteer_Reimbursement_Admin {
 	}
 
 
-	public function claim_approved_email($reimbursement, $new_status) {
+	public function claim_approved_email($claim, $new_status) {
 		if(get_option('vr_allow_notification_emails', 'yes')!=='yes'){
 			return;
 		}
-		$meta = json_decode($reimbursement->meta, true);
+		$meta = json_decode($claim->meta, true);
 		$payee_name = $meta['payee_name'];
 		$payee_email = $meta['payee_email'];
 		$purpose = $meta['purpose'];
@@ -562,18 +562,18 @@ class Volunteer_Reimbursement_Admin {
 		$amount = number_format($meta['amount']['dollars'] + $meta['amount']['cents'] / 100, 2);
 	
 		$subject = sprintf('Your %s claim #%d for %s has been approved', 
-						$reimbursement->form_type,
-						 $reimbursement->id,
+						$claim->form_type,
+						 $claim->id,
 						 $purpose);
 		$message = sprintf(
-			"Dear %s,\n\nYour reimbursement claim submitted on %s has been approved.\n\nPurpose: %s\n Description: %s\nAmount: $%s",
+			"Dear %s,\n\nYour claim submitted on %s has been approved.\n\nPurpose: %s\n Description: %s\nAmount: $%s",
 			$payee_name,
-			date('d/m/Y', strtotime($reimbursement->submit_date)),
+			date('d/m/Y', strtotime($claim->submit_date)),
 			$purpose,
 			$transaction_details,
 			$amount
 		);
-		if($reimbursement->user_id>0){
+		if($claim->user_id>0){
 			$claim_url = wc_get_account_endpoint_url( 'reimbursement-claims' );
 			$message .= "\nTo track the status of your claim, please visit your <a href='" . esc_url($claim_url) . "'>account page</a>";
 		}
@@ -585,11 +585,11 @@ class Volunteer_Reimbursement_Admin {
 		error_log($email_status);
 	}
 
-	public function claim_paid_email($reimbursement, $new_status) {
+	public function claim_paid_email($claim, $new_status) {
 		if(get_option('vr_allow_notification_emails', 'yes')!=='yes'){
 			return;
 		}
-		$meta = json_decode($reimbursement->meta, true);
+		$meta = json_decode($claim->meta, true);
 		$payee_name = $meta['payee_name'];
 		$payee_email = $meta['payee_email'];
 		$purpose = $meta['purpose'];
@@ -597,19 +597,19 @@ class Volunteer_Reimbursement_Admin {
 		$transaction_details = $meta['transaction_details'] ?? 'N/A';
 	
 		$subject = sprintf('Your %s claim #%d for %s has been paid', 
-						$reimbursement->form_type,
-						$reimbursement->id,
+						$claim->form_type,
+						$claim->id,
 						$purpose);
 
 		$message = sprintf(
-			"Dear %s,\n\nYour reimbursement claim submitted on %s has been paid.\n\nPurpose: %s\n Description: %s\nAmount: $%s",
+			"Dear %s,\n\nYour claim submitted on %s has been paid.\n\nPurpose: %s\n Description: %s\nAmount: $%s",
 			$payee_name,
-			date('d/m/Y', strtotime($reimbursement->submit_date)),
+			date('d/m/Y', strtotime($claim->submit_date)),
 			$purpose,
 			$transaction_details,
 			$amount
 		);
-		if($reimbursement->user_id>0){
+		if($claim->user_id>0){
 			$claim_url = wc_get_account_endpoint_url( 'reimbursement-claims' );
 			$message .= "\nTo track the status of your claim, please visit your <a href='" . esc_url($claim_url) . "'>account page</a>";
 		}
@@ -621,42 +621,42 @@ class Volunteer_Reimbursement_Admin {
 		error_log($email_status);
 	}
 
-	public function log_claim_approved_time($reimbursement, $new_status){
+	public function log_claim_approved_time($claim, $new_status){
 		if ($new_status === 'approved') {
 			// Update the approve_date to the current timestamp
 			$result = $this->wpdb->update(
 				$this->table_name, // Table name
 				['approve_date' => current_time('mysql')], // Data to update
-				['id' => $reimbursement->id], // Where clause
+				['id' => $claim->id], // Where clause
 				['%s'], // Format for the approve_date column
 				['%d']  // Format for the id column
 			);
 	
 			// Check if the update was successful
 			if ($result === false) {
-				error_log('Failed to update approve_date for reimbursement ID: ' . $reimbursement->id);
+				error_log('Failed to update approve_date for claim ID: ' . $claim->id);
 			} else {
-				error_log('Successfully updated approve_date for reimbursement ID: ' . $reimbursement->id);
+				error_log('Successfully updated approve_date for claim ID: ' . $claim->id);
 			}
 		}
 	}
 
-	public function log_claim_paid_time($reimbursement, $new_status){
+	public function log_claim_paid_time($claim, $new_status){
 		if ($new_status === 'paid') {
 			// Update the approve_date to the current timestamp
 			$result = $this->wpdb->update(
 				$this->table_name, // Table name
 				['paid_date' => current_time('mysql')], // Data to update
-				['id' => $reimbursement->id], // Where clause
+				['id' => $claim->id], // Where clause
 				['%s'], // Format for the approve_date column
 				['%d']  // Format for the id column
 			);
 	
 			// Check if the update was successful
 			if ($result === false) {
-				error_log('Failed to update approve_date for reimbursement ID: ' . $reimbursement->id);
+				error_log('Failed to update approve_date for claim ID: ' . $claim->id);
 			} else {
-				error_log('Successfully updated approve_date for reimbursement ID: ' . $reimbursement->id);
+				error_log('Successfully updated approve_date for claim ID: ' . $claim->id);
 			}
 		}
 	}

@@ -85,33 +85,36 @@ class VR_Reimbursement_Form{
         return false;
     }
 
-	public function get_transaction_record($transaction, $reimbursement){
-		$reimbursement_data = json_decode($reimbursement->meta);
+	public function get_transaction_record($transaction, $claim){
+		$claim_data = json_decode($claim->meta);
 
-		$transaction->setAccountName($reimbursement_data->payee_name);
-		$transaction->setAccountNumber($reimbursement_data->payee_account_number);
-		if (preg_match('/^\d{6}$/', $reimbursement_data->payee_bsb)) {
+		$transaction->setAccountName($claim_data->payee_name);
+		$transaction->setAccountNumber($claim_data->payee_account_number);
+		if (preg_match('/^\d{6}$/', $claim_data->payee_bsb)) {
 			// Convert to XXX-XXX format
-			$formatted_bsb = substr($reimbursement_data->payee_bsb, 0, 3) . '-' . substr($reimbursement_data->payee_bsb, 3, 3);
+			$formatted_bsb = substr($claim_data->payee_bsb, 0, 3) . '-' . substr($claim_data->payee_bsb, 3, 3);
 		}else{
-			$formatted_bsb = $reimbursement_data->payee_bsb;
+			$formatted_bsb = $claim_data->payee_bsb;
 		}
 		$transaction->setBsb($formatted_bsb);
 		$transaction->setTransactionCode(53);
-		$transaction->setReference($reimbursement->id);
-		$transaction->setAmount($reimbursement_data->amount->dollars+ $reimbursement_data->amount->cents/100);
+		$transaction->setReference($claim->id);
+
+		error_log($claim->id);
+		error_log($claim_data->amount->dollars+ $claim_data->amount->cents/100);
+		$transaction->setAmount($claim_data->amount->dollars*100+ $claim_data->amount->cents);
 
 		return $transaction;
 
 	}
 
-	public function get_xero_bill_note($xero_bill_note, $reimbursement){
-		$reimbursement_data = json_decode($reimbursement->meta);
-		$xero_bill_note['*ContactName'] = $reimbursement_data->payee_name;
-		$xero_bill_note['EmailAddress'] = $reimbursement_data->payee_email;
-		$xero_bill_note['Description'] = $reimbursement_data->purpose . $reimbursement_data->transaction_details;
+	public function get_xero_bill_note($xero_bill_note, $claim){
+		$claim_data = json_decode($claim->meta);
+		$xero_bill_note['*ContactName'] = $claim_data->payee_name;
+		$xero_bill_note['EmailAddress'] = $claim_data->payee_email;
+		$xero_bill_note['Description'] = $claim_data->purpose . $claim_data->transaction_details;
 
-		$xero_bill_note['*UnitAmount'] = $reimbursement_data->amount->dollars+ $reimbursement_data->amount->cents/100;
+		$xero_bill_note['*UnitAmount'] = $claim_data->amount->dollars+ $claim_data->amount->cents/100;
 		
 		return $xero_bill_note;
 	}

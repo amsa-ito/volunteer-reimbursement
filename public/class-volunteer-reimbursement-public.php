@@ -23,7 +23,7 @@
 require_once VR_PLUGIN_PATH . "includes/class-vr-payment-request-form.php";
 require_once VR_PLUGIN_PATH . "includes/class-vr-reimbursement-form.php";
 require_once VR_PLUGIN_PATH . "includes/class-volunteer-reimbursement-string-formatter.php";
-require_once VR_PLUGIN_PATH . "public/class-volunteer-reimbursements-my-account.php";
+require_once VR_PLUGIN_PATH . "public/class-volunteer-reimbursement-my-account.php";
 
 
 class Volunteer_Reimbursement_Public {

@@ -7,12 +7,12 @@
 	// variable uploadedFiles is passed from php
 
 	$(document).ready(function () {
-		if ($('#rv-file-list').length) {
+		if ($('#vr-file-list').length) {
 			updateFileList(); // Display files from `uploadedFiles` on page load
 		}
 	});
 
-	$('#rv-multiple-file-input').on('change', function (e) {
+	$('#vr-multiple-file-input').on('change', function (e) {
 		let newFiles = Array.from(e.target.files);
 
 		// Add new files to the uploaded files list
@@ -29,7 +29,7 @@
 		});
 
 		// Clear the file input to allow re-uploading the same file
-		$('#rv-multiple-file-input').val('');
+		$('#vr-multiple-file-input').val('');
 
 		// Update the file list display
 		updateFileList();
@@ -37,24 +37,24 @@
 
 	// Function to display the list of uploaded files
 	function updateFileList() {
-		$('#rv-file-list').empty();
+		$('#vr-file-list').empty();
 		for (let fileName in uploadedFiles) {
 			if (uploadedFiles.hasOwnProperty(fileName)) {
 				let fileData = uploadedFiles[fileName];
-				$('#rv-file-list').append(`<li><a href="${fileData.url}" target="_blank">${fileData.name}</a>
+				$('#vr-file-list').append(`<li><a href="${fileData.url}" target="_blank">${fileData.name}</a>
 					<button data-index="${fileName}" class="remove-btn button">Remove</button></li>`);
 			}
 		}
 	}
 
     	// Remove a file from the uploaded files list
-	$('#rv-file-list').on('click', '.remove-btn', function () {
+	$('#vr-file-list').on('click', '.remove-btn', function () {
 		const fileIndex = $(this).data('index');
 		delete uploadedFiles[fileIndex]; // Remove from the uploadedFiles object
 		updateFileList();
 	});
 
-	$('#vr-reimbursement-form').on('submit', function(e) {
+	$('#vr-claim-form').on('submit', function(e) {
         e.preventDefault(); // Prevent default form submission
 		$('#form-response').html(spinner);
         // let formData = $(this).serializeArray();
@@ -207,7 +207,8 @@
 		// Find an existing input[name="action"], if any
 		// form.action='export_xero';
 		$('#vr_reimbursement_table').get(0).submit();
-
+		
+		actionSelect.find('option[value="export_xero"]').remove();
 		submitButton.prop('disabled', false);
 		wrapper.find('.loading-spinner').remove();
 

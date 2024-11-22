@@ -18,11 +18,11 @@ foreach($attachments as $attachement_id => $file_url){
 
 
 ?>
-<label for="rv-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.<span class="required">*</span></label>
+<label for="vr-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.<span class="required">*</span></label>
 
-<input type="file" id="rv-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
+<input type="file" id="vr-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
 <!-- List of uploaded files -->
-<ul id="rv-file-list">
+<ul id="vr-file-list">
 
 </ul>
 

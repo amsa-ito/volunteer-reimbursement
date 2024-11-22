@@ -3,7 +3,7 @@ if (!class_exists('WP_List_Table')) {
     require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
 
-require_once VR_PLUGIN_PATH . "public/class-volunteer-reimbursements-my-account.php";
+require_once VR_PLUGIN_PATH . "public/class-volunteer-reimbursement-my-account.php";
 
 
 if (!class_exists('VR_Reimbursements_Table')) {
@@ -66,7 +66,7 @@ if (!class_exists('VR_Reimbursements_Table')) {
 
         // Checkbox column
         protected function column_cb($item) {
-            return sprintf('<input type="checkbox" name="reimbursement_ids[]" value="%s" />', $item->id);
+            return sprintf('<input type="checkbox" name="claim_ids[]" value="%s" />', $item->id);
         }
 
         protected function column_form_type($item){
@@ -74,13 +74,13 @@ if (!class_exists('VR_Reimbursements_Table')) {
         }
 
         protected function column_id($item){
-            $form_detail_url = add_query_arg(['page' => 'vr_reimbursement_detail', 'form_id' => $item->id], admin_url('admin.php'));
+            $form_detail_url = add_query_arg(['page' => 'vr-claim-detail', 'form_id' => $item->id], admin_url('admin.php'));
 
             $delete_url = add_query_arg([
                 'page' => $_GET['page'], // Keep on the current admin page
                 'action' => 'delete',
-                'reimbursement_id' => $item->id, // Pass the ID of the claim to delete
-                '_wpnonce' => wp_create_nonce('delete_reimbursement_' . $item->id), // Security nonce
+                'claim_id' => $item->id, // Pass the ID of the claim to delete
+                '_wpnonce' => wp_create_nonce('delete_claim_' . $item->id), // Security nonce
             ], admin_url('admin.php'));
 
             return sprintf(

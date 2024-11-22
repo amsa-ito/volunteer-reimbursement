@@ -1,6 +1,6 @@
 <div id="export-aba-modal">
     <h2>Export ABA Details</h2>
-    <div class="form-row">
+    <div class="vr-form-row">
         <div class="form-group">
             <label for="bsb">BSB:</label>
             <input type="text" id="bsb" name="description[bsb]" required>
@@ -10,7 +10,7 @@
             <input type="text" id="account_number" name="description[account_number]" required>
         </div>
     </div>
-    <div class="form-row">
+    <div class="vr-form-row">
         <div class="form-group">
             <label for="bank_name">Bank Name:</label>
             <input type="text" id="bank_name" name="description[bank_name]" required value=<?php echo esc_attr(get_option('vr_default_bank_name', ''));?>>
@@ -20,7 +20,7 @@
             <input type="text" id="user_name" name="description[user_name]" required value=<?php echo esc_attr(wp_get_current_user()->display_name);?>>
         </div>
     </div>
-    <div class="form-row">
+    <div class="vr-form-row">
         <div class="form-group">
             <label for="remitter">Remitter:</label>
             <input type="text" id="remitter" name="description[remitter]" required>
@@ -30,7 +30,7 @@
             <input type="text" id="entry_id" name="description[entry_id]" required>
         </div>
     </div>
-    <div class="form-row">
+    <div class="vr-form-row">
         <div class="form-group">
             <label for="description">Description:</label>
             <input type="text" id="description" name="description[description]" required>

@@ -55,7 +55,7 @@
 	public function vr_admin_settings() {
         add_submenu_page(
 			'volunteer-reimbursement',
-			'Reimbursement Settings',
+			'Plugin Settings',
 			'Settings',
 			'manage_volunteer_claims',
 			'volunteer-reimbursement-settings',
@@ -66,7 +66,7 @@
     public function vr_settings_page() {
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e('Volunteer Reimbursement Settings', 'text-domain'); ?></h1>
+			<h1><?php echo 'Volunteer Reimbursement Settings' ?></h1>
 			<form method="post" action="options.php">
 				<?php
 				settings_fields('vr_settings_group');

@@ -3,7 +3,7 @@ $current_user = wp_get_current_user();
 
 ?>
 
-<form id="reimbursement-form" enctype="multipart/form-data"  class="rv-claim-form">
+<form id="reimbursement-form" enctype="multipart/form-data"  class="vr-claim-form">
     <input type="hidden" name="action" value="submit_claim_form">
     <input type="hidden" name="form_type" value="payment_request">
 
@@ -13,14 +13,14 @@ $current_user = wp_get_current_user();
     <fieldset>
         <legend>Your Details</legend>
 
-        <div class="form-row">
-            <div class="rv-form-group">
+        <div class="vr-form-row">
+            <div class="vr-form-group">
                 <label for="payee_name">Your Name<span class="required">*</span></label>
                 <input type="text" name="payee_name" id="payee_name" required <?php if($current_user){echo 'value="' . esc_attr( $current_user->display_name ) . '"'; }?>>
 
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="payee_email">Your Email<span class="required">*</span></label>
                 <input type="email" name="payee_email" id="payee_email" required <?php if($current_user){echo 'value="' . esc_attr( $current_user->user_email ) . '"'; }?>>
 
@@ -28,13 +28,13 @@ $current_user = wp_get_current_user();
 
         </div>
 
-        <div class="form-row">
-            <div class="rv-form-group">
+        <div class="vr-form-row">
+            <div class="vr-form-group">
                 <label for="payee_phone_number">Phone number<span class="required">*</span></label>
                 <input type="text" name="payee_phone_number" id="payee_phone_number" required>
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="payee_committee">Select Committee<span class="required">*</span></label>
                 <select id="payee_committee" name="payee_committee" required>
                     <option value="AMSA Reps">AMSA Reps</option>
@@ -69,54 +69,54 @@ $current_user = wp_get_current_user();
         <!-- Supplier Details -->
     <fieldset>
         <legend>Supplier Details</legend>
-        <div class="form-row">
-            <div class="rv-form-group">
+        <div class="vr-form-row">
+            <div class="vr-form-group">
                 <label for="business_name">Business name<span class="required">*</span></label>
                 <input type="text" name="business_name" id="business_name" required>
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="contact_name">Contact name</label>
                 <input type="text" name="contact_name" id="contact_name">
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="rv-form-group">
+        <div class="vr-form-row">
+            <div class="vr-form-group">
                 <label for="supplier_email">Supplier Email<span class="required">*</span></label>
                 <input type="email" name="supplier_email" id="supplier_email" required>
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="supplier_phone">Supplier Phone</label>
                 <input type="text" name="supplier_phone" id="supplier_phone">
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="rv-form-group">
+        <div class="vr-form-row">
+            <div class="vr-form-group">
                 <label for="supplier_bank_name">Bank account name</label>
                 <input type="text" name="supplier_bank_name" id="supplier_bank_name">
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="supplier_bsb">BSB number</label>
                 <input type="text" name="supplier_bsb" id="supplier_bsb" pattern="\d{5,6}" data-helper="Just the numerals, no hyphen.">
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="supplier_account_number">Bank account Number</label>
                 <input type="text" name="supplier_account_number" id="supplier_account_number" pattern="\d{5,9}">
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="rv-form-group">
+        <div class="vr-form-row">
+            <div class="vr-form-group">
                 <label for="supplier_bpay">BPAY biller code</label>
                 <input type="text" name="supplier_bpay" id="supplier_bpay" pattern="\d{4,6}" data-helper="Just the numerals, no hyphen.">
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="supplier_bpay_reference">BPAY Account or reference number</label>
                 <input type="text" name="supplier_bpay_reference" id="supplier_bpay_reference">
             </div>
@@ -126,25 +126,25 @@ $current_user = wp_get_current_user();
 
     <fieldset>
         <legend>Transaction Details</legend>
-        <div class="form-row">
-            <div class="rv-form-group">
+        <div class="vr-form-row">
+            <div class="vr-form-group">
                 <label for="purpose">Activity/event/project<span class="required">*</span></label>
                 <input type="text" name="purpose" id="purpose" required data-helper="In 10 words or less; this will be used in the email subject.">
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="due_date">Due date for this payment<span class="required">*</span></label>
                 <input type="date" name="due_date" id="due_date" required />
             </div>
         </div>
 
-        <div class="rv-form-group">
+        <div class="vr-form-group">
             <label for="transaction_details">Payment description and/or notes<span class="required">*</span></label>
             <textarea name="transaction_details" id="transaction_details" data-helper="If this is captured in the previous field or on the invoice itself, just leave this blank. However if neither of these adequately describe what you are paying for, include a longer description here."></textarea>
         </div>
 
-        <div class="form-row">
-            <div class="amount-claimed-container rv-form-group">
+        <div class="vr-form-row">
+            <div class="amount-claimed-container vr-form-group">
                 <label for="dollars">Amount to be paid <span class="required">*</span></label>
                 <div class="amount-inputs">
                     <span>$</span>
@@ -158,7 +158,7 @@ $current_user = wp_get_current_user();
                 </div>
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="currency">Currency</label>
                 <input type="text" name="currency" id="currency" class="currency-input" placeholder="AUD" value="AUD">
             </div>
@@ -167,15 +167,15 @@ $current_user = wp_get_current_user();
 
     <fieldset>
         <legend>Attachments</legend>
-        <div class="rv-form-group">
-            <label for="rv-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.</label>
+        <div class="vr-form-group">
+            <label for="vr-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.</label>
 
-            <input type="file" id="rv-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
-            <ul id="rv-file-list"></ul>
+            <input type="file" id="vr-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
+            <ul id="vr-file-list"></ul>
         </div>
     </fieldset>
 
-    <div class="rv-form-group">
+    <div class="vr-form-group">
         <button type="submit">Submit Payment Request</button>
     </div>
 </form>

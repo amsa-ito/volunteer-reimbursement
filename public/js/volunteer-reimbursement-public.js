@@ -32,7 +32,7 @@
 
 	let formSubmittedSuccessfully = false;
 
-	$('#form-content').on('focus', '.rv-form-group input[data-helper], .rv-form-group textarea[data-helper]', function() {
+	$('#form-content').on('focus', '.vr-form-group input[data-helper], .vr-form-group textarea[data-helper]', function() {
 		// Check if helper text already exists and remove it if necessary
 		const existingHelper = $(this).siblings('.helper-text');
 		if (existingHelper.length) existingHelper.remove();
@@ -42,12 +42,12 @@
 			.addClass('helper-text')
 			.html($(this).data('helper'));
 	
-		// Append the helper text to the end of the .rv-form-group container
+		// Append the helper text to the end of the .vr-form-group container
 		$(this).parent().append(helperText);
 	});
 	
 	// Remove helper text when input loses focus
-	$('#form-content').on('blur', '.rv-form-group input[data-helper], .rv-form-group textarea[data-helper]', function() {
+	$('#form-content').on('blur', '.vr-form-group input[data-helper], .vr-form-group textarea[data-helper]', function() {
 		$(this).siblings('.helper-text').remove();
 	});
 	
@@ -83,6 +83,17 @@
 		if ($(this).val() === '') {
 			$(this).val($(this).attr('name') === 'dollars' ? '0' : '00');
 		}
+	});
+
+	// Open Modal on Thumbnail Click
+	$('#form-content').on('click', '#vr-example-invoice-thumbnail', function () {
+		$('#vr-example-invoice-modal').css("display","flex");
+	});
+
+	// Close Modal on Close Button or Background Click
+	$('#form-content').on('click', '.vr-modal-close, #vr-example-invoice-modal', function (event) {
+		if (event.target !== this) return; // Prevent closing when clicking on modal content
+		$('#vr-example-invoice-modal').css("display", "none");
 	});
 	
 
@@ -142,7 +153,7 @@
 				if (response.data['status'] === 'success') {
 					$('#form-response').html('<p style="color:green;">' + response.data['message'] + '</p>');
 					$('#reimbursement-form')[0].reset(); // Clear the form on success
-					$('#rv-file-list').empty();
+					$('#vr-file-list').empty();
 					uploadedFiles=[];
 					formSubmittedSuccessfully = true;
 				} else {
@@ -168,7 +179,7 @@
 	});
 
 	let uploadedFiles = [];
-	$('#form-content').on('change', '#rv-multiple-file-input', function (e) {
+	$('#form-content').on('change', '#vr-multiple-file-input', function (e) {
 		let newFiles = Array.from(e.target.files);
 
 		// Add new files to the uploaded files list
@@ -179,7 +190,7 @@
 		});
 
 		// Clear the file input to allow re-uploading the same file
-		$('#rv-multiple-file-input').val('');
+		$('#vr-multiple-file-input').val('');
 
 		// Update the file list display
 		updateFileList();
@@ -187,9 +198,9 @@
 
 	// Function to display the list of uploaded files
 	function updateFileList() {
-		$('#rv-file-list').empty();
+		$('#vr-file-list').empty();
 		uploadedFiles.forEach((file, index) => {
-			$('#rv-file-list').append(`<li>${file.name} (${(file.size / 1024).toFixed(1)} KB) 
+			$('#vr-file-list').append(`<li>${file.name} (${(file.size / 1024).toFixed(1)} KB) 
 				<button data-index="${index}" class="remove-btn">Remove</button></li>`);
 		});
 	}

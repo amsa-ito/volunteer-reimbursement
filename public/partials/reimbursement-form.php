@@ -2,7 +2,7 @@
 $current_user = wp_get_current_user();
 ?>
 
-<form id="reimbursement-form" enctype="multipart/form-data" class="rv-claim-form">
+<form id="reimbursement-form" enctype="multipart/form-data" class="vr-claim-form">
     <input type="hidden" name="action" value="submit_claim_form">
     <input type="hidden" name="form_type" value="reimbursement">
 
@@ -12,25 +12,25 @@ $current_user = wp_get_current_user();
     <fieldset>
         <legend>Your Details</legend>
 
-        <div class="form-row">
-            <div class="rv-form-group">
+        <div class="vr-form-row">
+            <div class="vr-form-group">
                 <label for="payee_name">Payee Name <span class="required">*</span></label>
                 <input type="text" name="payee_name" id="payee_name" required <?php if($current_user){echo 'value="' . esc_attr( $current_user->display_name ) . '"'; }?>>
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="payee_email">Email <span class="required">*</span></label>
                 <input type="email" name="payee_email" id="payee_email" required <?php if($current_user){echo 'value="' . esc_attr( $current_user->user_email ) . '"'; }?>>
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="rv-form-group">
+        <div class="vr-form-row">
+            <div class="vr-form-group">
                 <label for="payee_phone_number">Phone number<span class="required">*</span></label>
                 <input type="text" name="payee_phone_number" id="payee_phone_number" required>
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
             <label for="payee_committee">Select Committee<span class="required">*</span></label>
             <select id="payee_committee" name="payee_committee" required>
                 <option value="AMSA Reps">AMSA Reps</option>
@@ -64,33 +64,33 @@ $current_user = wp_get_current_user();
     <fieldset>
         <legend>Bank Details</legend>
 
-        <div class="form-row">
+        <div class="vr-form-row">
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="payee_bank_name">Bank name<span class="required">*</span></label>
                 <input type="text" name="payee_bank_name" id="payee_bank_name" required>
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="payee_bsb">BSB<span class="required">*</span></label>
                 <input type="text" name="payee_bsb" id="payee_bsb" required pattern="\d{6}" data-helper="Just the numerals, no hyphen.">
             </div>
         </div>
 
-        <div class="form-row">
+        <div class="vr-form-row">
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="payee_account_number">Bank account Number<span class="required">*</span></label>
                 <input type="text" name="payee_account_number" id="payee_account_number" required pattern="\d{5,9}">
             </div>
 
-            <div class="rv-form-group">
+            <div class="vr-form-group">
                 <label for="budget_reference">Budget reference</label>
                 <input type="text" name="budget_reference" id="budget_reference" data-helper="Please ask your Treasurer to tell you where this transaction has been accounted for.">
             </div>
         </div>
 
-        <div class="rv-form-group">
+        <div class="vr-form-group">
             <label for="additional_email">Optional additional email for receipt</label>
             <input type="email" name="additional_email" id="additional_email" data-helper="A copy of the reimbursement will be CC'ed to this email address once processed">
         </div>
@@ -100,18 +100,18 @@ $current_user = wp_get_current_user();
     <fieldset>
         <legend>Reimbursement Details</legend>
 
-        <div class="rv-form-group">
+        <div class="vr-form-group">
             <label for="purpose">Activity/event/project<span class="required">*</span></label>
             <input type="text" name="purpose" id="purpose" required data-helper="In 10 words or less; this will be used in the email subject.">
         </div>
 
-        <div class="rv-form-group">
+        <div class="vr-form-group">
             <label for="transaction_details">Transaction details<span class="required">*</span></label>
             <textarea name="transaction_details" id="transaction_details" required data-helper="Please describe each transaction that makes up this claim. For each transaction this should include:<br>- what you bought<br>- who you bought it from<br>- how much it cost"></textarea>
         </div>
 
 
-        <div class="amount-claimed-container rv-form-group">
+        <div class="amount-claimed-container vr-form-group">
             <label for="dollars">Total amount claimed <span class="required">*</span></label>
             <div class="amount-inputs">
                 <span>$</span>
@@ -129,15 +129,37 @@ $current_user = wp_get_current_user();
     <fieldset>
         <legend>Attachments</legend>
 
-        <div class="rv-form-group">
-            <label for="rv-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.<span class="required">*</span></label>
+        <div class="vr-form-group">
+            <label for="vr-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.<span class="required">*</span></label>
 
-            <input type="file" id="rv-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
-            <ul id="rv-file-list"></ul>
+            <div class="vr-example-invoice">
+                Example of a valid tax invoice:
+                <img 
+                src="<?php echo VR_PLUGIN_PATH . 'public/assets/example_tax_invoice.png'; ?>" 
+                alt="Example Tax Invoice" 
+                class="vr-thumbnail" 
+                id="vr-example-invoice-thumbnail">
+            </div>
+
+            <input type="file" id="vr-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
+            <ul id="vr-file-list"></ul>
         </div>
+
+            <!-- Modal Container -->
+        <div id="vr-example-invoice-modal" class="vr-modal">
+            <div class="vr-modal-content">
+                <span class="vr-modal-close">&times;</span>
+                <img 
+                    src="<?php echo VR_PLUGIN_PATH . 'public/assets/example_tax_invoice.png'; ?>" 
+                    alt="Full Example Tax Invoice" 
+                    class="vr-modal-image">
+            </div>
+        </div>
+        
+    
     </fieldset>
 
-    <div class="rv-form-group">
+    <div class="vr-form-group">
         <button type="submit">Submit Reimbursement</button>
     </div>
 </form>

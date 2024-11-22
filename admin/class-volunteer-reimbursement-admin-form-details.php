@@ -17,11 +17,11 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 	public function vr_admin_detail_page() {
         add_submenu_page(
 			null, // No menu item in the sidebar
-			'Reimbursement Form Details',
-			'Reimbursement Form Details',
+			'Claim Details',
+			'CLaim Details',
 			'manage_volunteer_claims',
-			'vr_reimbursement_detail',
-			array($this,'render_vr_reimbursement_detail_page')
+			'vr-claim-detail',
+			array($this,'render_vr_claim_detail_page')
 		);
     }
 
@@ -36,19 +36,19 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 
         $form_id = intval($_POST['form_id']);
         
-        $reimbursement = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $form_id));
+        $claim = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $form_id));
 
-        if (!$reimbursement) {
+        if (!$claim) {
             wp_send_json_error([ 'status' => 'error', 'message' => 'Form not found.' ] );
         }
 
-        $form_type = $reimbursement->form_type;
+        $form_type = $claim->form_type;
 
         $form_data = apply_filters('vr_parse_'. $form_type ,$_POST, $_FILES);
 
         $new_status = sanitize_text_field($_POST['status']);
         
-        $existing_meta = json_decode($reimbursement->meta, true) ?: [];
+        $existing_meta = json_decode($claim->meta, true) ?: [];
 
         $new_form_data = array_replace_recursive($existing_meta, $form_data);
 
@@ -58,7 +58,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 			wp_send_json_error( [ 'status' => 'error', 'message' => $error_msg ] );
 		}
 
-		$user_id = $reimbursement->id;
+		$user_id = $claim->id;
 		if(isset($form_data['payee_email'])){
 			$user_by_email = get_user_by('email', $form_data['payee_email']);
 			if($user_by_email){
@@ -73,9 +73,9 @@ class Volunteer_Reimbursement_Admin_Form_Details{
         ], ['id' => $form_id]);
 
         if ($result !== false) {
-			$old_status = $reimbursement->status;
+			$old_status = $claim->status;
 			if($new_status != $old_status){
-				do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $reimbursement, $new_status);
+				do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $claim, $new_status);
 			}
             wp_send_json_success(['status' => 'success', 'message' => 'Claim saved successfully!']);
 
@@ -86,7 +86,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
         wp_die();
     }
 
-    public function render_vr_reimbursement_detail_page(){
+    public function render_vr_claim_detail_page(){
 		if (!isset($_GET['form_id'])) {
 			wp_die('No form ID specified.');
 		}
@@ -94,10 +94,10 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'volunteer_reimbursements';
 		$form_id = intval($_GET['form_id']);
-		$reimbursement = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $form_id));
+		$claim = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $form_id));
 	
-		if (!$reimbursement) {
-			wp_die('Reimbursement form not found.');
+		if (!$claim) {
+			wp_die('Claim not found.');
 		}
 
 		require_once(VR_PLUGIN_PATH . "admin/partials/claim-details-page.php");
@@ -125,11 +125,11 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 
 		ob_start();
 		?>
-		<label for="rv-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.<span class="required">*</span></label>
+		<label for="vr-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.<span class="required">*</span></label>
 
-		<input type="file" id="rv-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
+		<input type="file" id="vr-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
 		<!-- List of uploaded files -->
-		<ul id="rv-file-list">
+		<ul id="vr-file-list">
 
 		</ul>
 

@@ -1,4 +1,16 @@
 <?php
+/**
+ * Payment Request Partial
+ *
+ * This partial provides the form and instructions for submitting a payment request. 
+ * Users can request AMSA to pay an external supplier directly, with additional details 
+ * for specific scenarios such as prizes, suppliers without ABNs, or donations.
+ *
+ * Usage:
+ * - Included dynamically based on user selection in the `claim-type-selection` partial.
+ *
+ * @since 1.0.0
+ */
 $current_user = wp_get_current_user();
 
 ?>

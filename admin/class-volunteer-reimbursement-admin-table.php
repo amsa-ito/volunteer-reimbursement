@@ -1,4 +1,16 @@
 <?php
+/**
+ * VR_Reimbursements_Table Class
+ * 
+ * This class extends the WordPress WP_List_Table to provide a custom table for managing 
+ * volunteer reimbursement claims in the admin dashboard. It includes support for sortable 
+ * columns, bulk actions, filtering, and custom rendering of table columns. The class also 
+ * integrates functionality for saving and managing hidden columns via screen options.
+ * 
+ * @package    Volunteer_Reimbursement
+ * @subpackage Volunteer_Reimbursement/admin
+ * @author     Steven Zhang <stevenzhangshao@gmail.com>
+ */
 if (!class_exists('WP_List_Table')) {
     require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
@@ -21,7 +33,11 @@ if (!class_exists('VR_Reimbursements_Table')) {
             $this->data = $data;
         }
 
-        // Define table columns
+        /**
+         * Define table columns.
+         *
+         * @return array List of table columns.
+         */
         public function get_columns() {
             return [
                 'cb'         => '<input type="checkbox" />',
@@ -36,7 +52,11 @@ if (!class_exists('VR_Reimbursements_Table')) {
             ];
         }
 
-        // Specify sortable columns
+        /**
+         * Specify sortable columns.
+         *
+         * @return array List of sortable columns.
+         */
         protected function get_sortable_columns() {
             return [
                 'id'          => ['id', true], // Sort by ID, default ascending
@@ -44,27 +64,55 @@ if (!class_exists('VR_Reimbursements_Table')) {
             ];
         }
 
-            // Column rendering for new columns
+        /**
+         * Custom renderer for the "approve_date" column.
+         *
+         * @param object $item Row data.
+         * @return string Formatted column value.
+         */
         protected function column_approve_date($item) {
             return esc_html($item->approve_date && $item->approve_date !== '0000-00-00 00:00:00' ? $item->approve_date : 'N/A');
         }
 
+        /**
+         * Custom renderer for the "paid_date" column.
+         *
+         * @param object $item Row data.
+         * @return string Formatted column value.
+         */
         protected function column_paid_date($item) {
             return esc_html($item->paid_date && $item->paid_date !== '0000-00-00 00:00:00' ? $item->paid_date : 'N/A');
         }
 
+        /**
+         * Custom renderer for the "meta_purpose" column.
+         *
+         * @param object $item Row data.
+         * @return string Formatted column value.
+         */
         protected function column_meta_purpose($item) {
             $meta = json_decode($item->meta, true);
             return esc_html($meta['purpose'] ?? 'N/A');
         }
 
 
-        // Default column renderer
+        /**
+         * Default column renderer for unspecified columns.
+         *
+         * @param object $item Row data.
+         * @param string $column_name Column name.
+         * @return string Column value.
+         */
         function column_default($item, $column_name) {
             return  isset($item->$column_name) ? $item->$column_name : 'N/A';
         }
 
-        // Checkbox column
+        /**
+         * Renderer for the checkbox column.
+         *
+         * @param object $item Row data.
+         * @return string HTML for the checkbox.
+         */
         protected function column_cb($item) {
             return sprintf('<input type="checkbox" name="claim_ids[]" value="%s" />', $item->id);
         }
@@ -74,7 +122,7 @@ if (!class_exists('VR_Reimbursements_Table')) {
         }
 
         protected function column_id($item){
-            $form_detail_url = add_query_arg(['page' => 'vr-claim-detail', 'form_id' => $item->id], admin_url('admin.php'));
+            $form_detail_url = add_query_arg(['page' => 'vr-claim-detail', 'claim_id' => $item->id], admin_url('admin.php'));
 
             $delete_url = add_query_arg([
                 'page' => $_GET['page'], // Keep on the current admin page
@@ -109,7 +157,9 @@ if (!class_exists('VR_Reimbursements_Table')) {
            
         }
 
-        // Prepare table items and pagination
+        /**
+         * Prepare items for display in the table, including sorting, pagination, and filtering.
+         */
         public function prepare_items() {
             $per_page = 10;
             $current_page = $this->get_pagenum();
@@ -126,14 +176,11 @@ if (!class_exists('VR_Reimbursements_Table')) {
     
 
             // Filter the data based on the selected form type
-            // error_log(print_r($_GET['form_type'], true));
-            // error_log(print_r($this->data, true));
             if (!empty($_GET['form_type'])) {
                 $this->data = array_filter($this->data, function($item) {
                     return $item->form_type === $_GET['form_type'];
                 });
             }
-            // error_log(print_r($this->data, true));
 
             $columns = $this->get_columns();
             $hidden = array();
@@ -145,7 +192,6 @@ if (!class_exists('VR_Reimbursements_Table')) {
             // Set pagination
             $this->items = array_slice($this->data, (($current_page - 1) * $per_page), $per_page);
 
-            // error_log(print_r($this->items, true));
             $this->set_pagination_args([
                 'total_items' => $total_items,
                 'per_page'    => $per_page,
@@ -153,13 +199,18 @@ if (!class_exists('VR_Reimbursements_Table')) {
             ]);
         }
 
-        // Bulk actions
+        /**
+         * Define available bulk actions.
+         *
+         * @return array List of bulk actions.
+         */
         protected function get_bulk_actions() {
             return [
                 'delete'           => 'Delete',
                 'status_pending'   => 'Change Status to Pending',
                 'status_approved'  => 'Change Status to Approved',
                 'status_paid'      => 'Change Status to Paid',
+                'status_rejected'  => 'Change Status to Rejected'
             ];
         }
 

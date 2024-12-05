@@ -101,6 +101,36 @@
 				'default' => 'yes'
 			)
 		);
+		register_setting(
+			'vr_settings_group', 
+			'vr_form_submit_notification_recipients', 
+			array(
+				'type' => 'array',
+				'sanitize_callback' => function ($value) {
+					// Sanitize the list of emails
+					if (is_array($value)) {
+						// Filter the array to keep only valid email addresses
+						return array_filter($value, function ($email) {
+							return filter_var($email, FILTER_VALIDATE_EMAIL);
+						});
+					}else{
+						$emails = array_map('trim', explode(',', $value));
+						$valid_emails = [];
+
+						foreach ($emails as $email) {
+							// Validate each email
+							if (is_email($email)) {
+								$valid_emails[] = sanitize_email($email); // Sanitize and store valid emails
+							}
+						}
+						return $valid_emails;
+					}
+					// If not an array, return an empty array
+					return [];
+				},
+				'default' => []
+			)
+		);
 	
 		// Add settings section
 		add_settings_section(
@@ -132,7 +162,19 @@
 			function () {
 				$value = get_option('vr_allow_notification_emails', 'yes');
 				echo '<label><input type="checkbox" id="vr_allow_notification_emails" name="vr_allow_notification_emails" value="yes" ' . checked($value, 'yes', false) . '> Enable notification emails</label>';
-				echo '<p class="description">Enable email notifications for when the status of a claim changes</p>';
+				echo '<p class="description">Enable email notifications to volunteer for when the status of a claim changes</p>';
+
+			},
+			'volunteer-reimbursement-settings',
+			'vr_settings_section'
+		);
+
+		add_settings_field(
+			'vr_form_submit_notification_recipients',
+			'Notification Recipients',
+			function () {
+				$value = get_option('vr_form_submit_notification_recipients', []);
+				echo '<input type="text" name="vr_form_submit_notification_recipients" value="' . ($value ? implode(',', $value) : '') . '" class="regular-text">';
 
 			},
 			'volunteer-reimbursement-settings',

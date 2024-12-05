@@ -39,5 +39,5 @@
     <div class="form-actions">
         <button class="button action" id="submit_aba_export">Export to ABA</button>
     </div>
-    <div id="form-response"></div>
+    <div id="vr-form-response"></div>
 </div>

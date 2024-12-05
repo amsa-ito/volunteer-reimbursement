@@ -36,6 +36,12 @@
     color: green;
 }
 
+.vr_form_status_rejected {
+  font-weight: bold;
+  color: red; /* Use red to indicate rejection clearly */
+}
+
+
 .loading-spinner {
     position: relative;
       width: 24px;

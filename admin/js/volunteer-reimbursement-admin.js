@@ -56,7 +56,7 @@
 
 	$('#vr-claim-form').on('submit', function(e) {
         e.preventDefault(); // Prevent default form submission
-		$('#form-response').html(spinner);
+		$('#vr-form-response').html(spinner);
         // let formData = $(this).serializeArray();
 		var formData = new FormData(this);
 
@@ -86,22 +86,22 @@
 			contentType: false,
 			success: function(response){
 				if (response.data['status'] ==='success'){
-					$('#form-response').html('<p style="color:green;">' + response.data['message'] + '</p>');
+					$('#vr-form-response').html('<p style="color:green;">' + response.data['message'] + '</p>');
 				}else{
-					$('#form-response').html('<p style="color:red;">' + response.data['message'] + '</p>');
+					$('#vr-form-response').html('<p style="color:red;">' + response.data['message'] + '</p>');
 				}
 			},
 			error: function(jqXHR, textStatus, errorThrown) {
 				console.error("AJAX Error:", textStatus, errorThrown);
-				$('#form-response').html('<p style="color:red;">There was an error processing your request. Please try again later.</p>');
+				$('#vr-form-response').html('<p style="color:red;">There was an error processing your request. Please try again later.</p>');
 			}
 		}).always(function(){
-			$('#form-response').find('.loading-spinner').remove();
+			$('#vr-form-response').find('.loading-spinner').remove();
 
 		});
     });
 
-	// Use event delegation to watch for changes on #payee_committee within #form-content
+	// Use event delegation to watch for changes on #payee_committee within #vr-form-content
 	$('#payee_committee').on('change', function() {
 		const committeeSelect = $(this); // #payee_committee element
 		const otherCommitteeInput = $('#payee-other-committee'); // #payee-other-committee element
@@ -159,7 +159,7 @@
 			contentType: false,
 			success: function(response){
 				if (response.data['status'] ==='success'){
-					$('#form-response').html('<p style="color:green;">' + response.data['message'] + '</p>');
+					$('#vr-form-response').html('<p style="color:green;">' + response.data['message'] + '</p>');
 
 					const blob = new Blob([response.data.file_content], { type: 'text/plain' });
 					const downloadLink = document.createElement('a');
@@ -170,12 +170,12 @@
 					document.body.removeChild(downloadLink); // Clean up the DOM
 					
 				}else{
-					$('#form-response').html('<p style="color:red;">' + response.data['message'] + '</p>');
+					$('#vr-form-response').html('<p style="color:red;">' + response.data['message'] + '</p>');
 				}
 			},
 			error: function(jqXHR, textStatus, errorThrown) {
 				console.error("AJAX Error:", textStatus, errorThrown);
-				$('#form-response').html('<p style="color:red;">There was an error processing your request. Please try again later.</p>');
+				$('#vr-form-response').html('<p style="color:red;">There was an error processing your request. Please try again later.</p>');
 			}
 		}).always(function(){
 			submitButton.prop('disabled', false);

@@ -1,9 +1,30 @@
 <?php 
-
+/**
+ * Volunteer_Reimbursement_Admin_Form_Details Class
+ * 
+ * This class provides the admin functionalities for managing volunteer reimbursement forms, 
+ * including handling AJAX form submissions, rendering the claim details page, and managing 
+ * meta-data-related rendering for attachments and committee selection fields.
+ * 
+ * @package    Volunteer_Reimbursement
+ * @subpackage Volunteer_Reimbursement/admin
+ * @author     Steven Zhang <stevenzhangshao@gmail.com>
+ */
 
 class Volunteer_Reimbursement_Admin_Form_Details{
-	private $plugin_name;
-	private $version;
+    /**
+     * Plugin name identifier.
+     *
+     * @var string
+     */
+    private $plugin_name;
+
+    /**
+     * Plugin version.
+     *
+     * @var string
+     */
+    private $version;
 
 
 	public function __construct( $plugin_name, $version ) {
@@ -14,6 +35,9 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 
     }
 
+    /**
+     * Adds a hidden admin page for viewing claim details.
+     */
 	public function vr_admin_detail_page() {
         add_submenu_page(
 			null, // No menu item in the sidebar
@@ -25,6 +49,9 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		);
     }
 
+	/**
+     * Handles saving of the volunteer reimbursement form via AJAX.
+     */
     public function save_vr_claim_form(){
 		// check_ajax_referer($this->plugin_name.'-nonce', 'nonce');
 		if (!current_user_can('manage_volunteer_claims')){
@@ -34,9 +61,9 @@ class Volunteer_Reimbursement_Admin_Form_Details{
         global $wpdb;
         $table_name = $wpdb->prefix . 'volunteer_reimbursements';
 
-        $form_id = intval($_POST['form_id']);
+        $claim_id = intval($_POST['claim_id']);
         
-        $claim = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $form_id));
+        $claim = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $claim_id));
 
         if (!$claim) {
             wp_send_json_error([ 'status' => 'error', 'message' => 'Form not found.' ] );
@@ -70,7 +97,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
             'status' => $new_status,
             'meta' => json_encode($new_form_data),
 			'user_id' => $user_id,
-        ], ['id' => $form_id]);
+        ], ['id' => $claim_id]);
 
         if ($result !== false) {
 			$old_status = $claim->status;
@@ -86,15 +113,18 @@ class Volunteer_Reimbursement_Admin_Form_Details{
         wp_die();
     }
 
+	/**
+     * Renders the claim detail page in the admin interface.
+     */
     public function render_vr_claim_detail_page(){
-		if (!isset($_GET['form_id'])) {
+		if (!isset($_GET['claim_id'])) {
 			wp_die('No form ID specified.');
 		}
 	
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'volunteer_reimbursements';
-		$form_id = intval($_GET['form_id']);
-		$claim = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $form_id));
+		$claim_id = intval($_GET['claim_id']);
+		$claim = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $claim_id));
 	
 		if (!$claim) {
 			wp_die('Claim not found.');
@@ -103,77 +133,6 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 		require_once(VR_PLUGIN_PATH . "admin/partials/claim-details-page.php");
 	
 	}
-
-
-	public function render_meta_attachments($default_html, $field_name, $value){
-
-        $uploaded_files = [];
-        foreach($value as $attachement_id => $file_url){
-            $attachment = get_attached_file( $attachement_id );
-			if($attachment){
-				$attachment_title = basename ( $attachment );
-				$file_size = filesize( $attachment );
-				
-				$uploaded_files[$attachement_id] = [
-					'name' => $attachment_title,
-					'url' => $file_url,
-					'size' => $file_size
-				];
-			}
-
-        }
-
-		ob_start();
-		?>
-		<label for="vr-multiple-file-input">Please attach legible scans or photos of each original invoice and receipt.<span class="required">*</span></label>
-
-		<input type="file" id="vr-multiple-file-input" name="attachments[]" accept="image/*,.pdf" multiple>
-		<!-- List of uploaded files -->
-		<ul id="vr-file-list">
-
-		</ul>
-
-        <script type="text/javascript">
-		// Pass PHP $value array to JavaScript as initial uploadedFiles
-		    let uploadedFiles = <?php echo json_encode($uploaded_files); ?> || [];
-	    </script>
-		<?php
-		return ob_get_clean();
-
-	}
-	public function render_meta_payee_committee($value){
-		$options = [
-			"AMSA Reps", "AMSA Global Health Committee", "AMSA Rural Health Committee", "Board of Directors",
-			"Convention 2022", "Convention 2023", "Executive", "Careers Conference 23", "AMSA Indigenous Health",
-			"Med Ed", "AMSA ISN", "AMSA Projects", "NLDS 2022", "RHS 2022", "AMSA Queer", "Vampire Cup",
-			"Mental Health", "Gender Equity", "National Council", "Other"
-		];
-	
-		// Determine if the value is in the predefined options
-		$isOther = !in_array($value, $options);
-		
-		ob_start();
-		?>
-		<label for="payee_committee">Select Committee<span class="required">*</span></label>
-		<select id="payee_committee" name="payee_committee" required>
-			<?php foreach ($options as $option): ?>
-				<option value="<?php echo esc_attr($option); ?>" 
-					<?php echo ($value === $option || ($isOther && $option === "Other")) ? 'selected' : ''; ?>>
-					<?php echo esc_html($option); ?>
-				</option>
-			<?php endforeach; ?>
-		</select>
-
-		<input type="text" id="payee-other-committee" 
-           name="payee_other_committee" 
-           placeholder="Please specify the committee"
-           style="display: <?php echo $isOther ? 'block' : 'none'; ?>; margin-top: 10px;"
-           value="<?php echo $isOther ? esc_attr($value) : ''; ?>">
-
-		<?php
-		return ob_get_clean();
-	}
-
 
 
 }

@@ -25,6 +25,8 @@ require_once VR_PLUGIN_PATH . "admin/class-volunteer-reimbursement-admin-form-de
 require_once VR_PLUGIN_PATH . "admin/class-volunteer-reimbursement-admin-settings.php";
 require_once VR_PLUGIN_PATH . "includes/aba/Generator/AbaFileGenerator.php";
 require_once VR_PLUGIN_PATH . "includes/aba/Model/Transaction.php";
+require_once VR_PLUGIN_PATH . "includes/class-volunteer-reimbursement-string-formatter.php";
+
 
 
 // use VR\AbaFileGenerator\Model\Transaction;
@@ -49,9 +51,21 @@ class Volunteer_Reimbursement_Admin {
 	 * @var      string    $version    The current version of this plugin.
 	 */
 	private $version;
-
+    /**
+     * The database table name used by the plugin.
+     *
+     * @since 1.0.0
+     * @access private
+     * @var string $table_name The name of the database table.
+     */
 	private $table_name;
-
+    /**
+     * The WordPress database instance.
+     *
+     * @since 1.0.0
+     * @access private
+     * @var wpdb $wpdb The WordPress database instance.
+     */
 	private $wpdb;
 
 	/**
@@ -79,25 +93,33 @@ class Volunteer_Reimbursement_Admin {
         // add_action('wp_ajax_nopriv_export_xero', array($this, 'generate_xero_export'));
 
 		add_action('vr_reimbursement_pending_to_approved', array($this, 'claim_approved_email'), 10, 2);
+		add_action('vr_reimbursement_rejected_to_approved', array($this, 'claim_approved_email'), 10, 2);
+
 		add_action('vr_reimbursement_pending_to_paid', array($this, 'claim_paid_email'), 10, 2);
 		add_action('vr_reimbursement_approved_to_paid', array($this, 'claim_paid_email'), 10, 2);
+		add_action('vr_reimbursement_rejected_to_paid', array($this, 'claim_paid_email'), 10, 2);
+
+		add_action('vr_reimbursement_pending_to_rejected', array($this, 'claim_rejected_email'), 10, 2);
+		add_action('vr_reimbursement_approved_to_rejected', array($this, 'claim_rejected_email'), 10, 2);
+		add_action('vr_reimbursement_paid_to_rejected', array($this, 'claim_rejected_email'), 10, 2);
 
 		add_action('vr_reimbursement_pending_to_approved', array($this, 'log_claim_approved_time'), 10, 2);
+		add_action('vr_reimbursement_rejected_to_approved', array($this, 'log_claim_approved_time'), 10, 2);
+
 		add_action('vr_reimbursement_pending_to_paid', array($this, 'log_claim_paid_time'), 10, 2);
-		add_action('vr_reimbursement_pending_to_paid', array($this, 'log_claim_paid_time'), 10, 2);
+		add_action('vr_reimbursement_approved_to_paid', array($this, 'log_claim_paid_time'), 10, 2);
+		add_action('vr_reimbursement_rejected_to_paid', array($this, 'log_claim_paid_time'), 10, 2);
 
-
-
+		
 		new Volunteer_Reimbursement_Admin_Form_Details($plugin_name, $version);
 		new Volunteer_Reimbursement_Admin_Settings($plugin_name, $version);
 	}
 
-	/**
-	 * Register the stylesheets for the admin area.
-	 *
-	 * @since    1.0.0
-	 */
-
+    /**
+     * Registers the admin menu for the plugin.
+     *
+     * @since 1.0.0
+     */
 	public function vr_admin_menu() {
 		add_menu_page(
 			'Claims',
@@ -110,6 +132,14 @@ class Volunteer_Reimbursement_Admin {
 		);
 	}
 
+    /**
+     * Displays the main admin page for managing reimbursement claims.
+     *
+     * Includes functionality for filtering claims by status, bulk actions (e.g., delete, export), 
+     * and rendering the claims table.
+     *
+     * @since 1.0.0
+     */
 	public function vr_admin_page() {
 		// Handle delete action
 		if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['claim_id'])) {
@@ -129,21 +159,42 @@ class Volunteer_Reimbursement_Admin {
 		}
 
 		$selected_status = $_GET['status'] ?? '';
+		$selected_form_type = $_GET['form_type'] ?? '';
 		
 		// Retrieve counts for each status
 		$statuses = [
 			'All' => '',
 			'Pending' => 'pending',
 			'Approved' => 'approved',
-			'Paid' => 'paid'
+			'Paid' => 'paid',
+			'Rejected' => 'rejected'
 		];
-	
-		// Retrieve reimbursements with optional status filtering
+
 		$query = "SELECT * FROM $this->table_name";
+
+		$conditions = [];
+		$params = [];
+
+		// Add status filter if selected
 		if ($selected_status) {
-			$query .= $this->wpdb->prepare(" WHERE status = %s", $selected_status);
+			$conditions[] = "status = '".$selected_status."'";
+			$params[] = $selected_status;
 		}
+
+		// Add form_type filter if selected
+		if ($selected_form_type) {
+			$conditions[] = "form_type = '".$selected_form_type."'";
+			$params[] = $selected_form_type;
+		}
+
+		// Combine conditions with AND if there are any
+		if ($conditions) {
+			$query .= " WHERE " . implode(" AND ", $conditions);
+		}
+	
 		$query .= " ORDER BY submit_date DESC";
+
+		debug_print($query);
 
 		if (isset($_POST['action']) && $_POST['action'] !== -1 && $_POST['claim_ids']) {
 			$action = $_POST['action'];
@@ -156,6 +207,8 @@ class Volunteer_Reimbursement_Admin {
 				$new_status = 'approved';
 			} elseif ($action === 'status_paid') {
 				$new_status = 'paid';
+			} elseif($action ==='status_rejected'){
+				$new_status = 'rejected';
 			}
 
 			// Apply the status change or delete as necessary
@@ -191,10 +244,11 @@ class Volunteer_Reimbursement_Admin {
 
 		// Filter by form type
 		echo '<form method="get">';
+		echo '<input type="hidden" name="page" value="volunteer-reimbursement">';
 		echo '<select name="form_type">';
 		echo '<option value="">All Claim Types</option>';
 		foreach ($this->wpdb->get_col("SELECT DISTINCT form_type FROM $this->table_name") as $type) {
-			printf('<option value="%s" %s>%s</option>', esc_attr($type), selected($_GET['form_type'] ?? '', $type, false), esc_html($type));
+			printf('<option value="%s" %s>%s</option>', esc_attr($type), selected($selected_form_type ?? '', $type, false), MetaDataFormatter::format_form_type(esc_html($type)));
 		}
 		echo '</select>';
 		echo '<input type="submit" class="button" value="Filter">';
@@ -246,6 +300,13 @@ class Volunteer_Reimbursement_Admin {
 	
 	}
 
+	/**
+     * Generates an ABA export file for selected claims.
+     *
+     * Handles user permissions, required field validation, and calls the `AbaFileGenerator` class to generate the file.
+     *
+     * @since 1.0.0
+     */
 	public function generate_aba_export(){
 		if (!current_user_can('manage_volunteer_claims')){
 			wp_send_json_error([ 'status' => 'error', 'message' => 'You do not have sufficient permissions.' ] );
@@ -340,16 +401,26 @@ class Volunteer_Reimbursement_Admin {
 		wp_die();
 	}
 
+    /**
+     * Updates the status of selected claims.
+     *
+     * Applies the specified status to a set of claim IDs and triggers relevant actions.
+     *
+     * @since 1.0.0
+     * @param string $new_status The new status to set.
+     * @param array $claim_ids The IDs of claims to update.
+     */
 	public function update_new_status($new_status, $claim_ids){
 		$ids_placeholder = implode(',', array_fill(0, count($claim_ids), '%d'));
+
+		// Create an indexed array of reimbursements by their ID
+		$sql = "SELECT * FROM {$this->table_name} WHERE id IN ($ids_placeholder)";
+		$claims = $this->wpdb->get_results($this->wpdb->prepare($sql, $claim_ids));
+
 		$sql = "UPDATE {$this->table_name} SET status = %s WHERE id IN ($ids_placeholder)";
 		$parameters = array_merge([$new_status], $claim_ids);
 
 		$result = $this->wpdb->query($this->wpdb->prepare($sql, $parameters));
-
-		// Create an indexed array of reimbursements by their ID
-		$sql = "SELECT id, meta FROM {$this->table_name} WHERE id IN ($ids_placeholder)";
-		$claims = $this->wpdb->get_results($this->wpdb->prepare($sql, $claim_ids));
 
 		$missing_ids=[];
 		foreach ($claims as $claim) {
@@ -359,25 +430,33 @@ class Volunteer_Reimbursement_Admin {
 			if($old_status===$new_status){
 				continue;
 			}
-			// debug_print('vr_reimbursement_' . $old_status . '_to_' . $new_status);
+			
+
 			do_action('vr_reimbursement_' . $old_status . '_to_' . $new_status, $claim, $new_status);
 		}
-		if($result){
+		if($this->wpdb->last_error){
 			?>
-			<div class="notice-success notice">
-				<p>Claim status changed to <?php echo(esc_attr($new_status))?> </p>
+
+			<div class="notice-error notice">
+				<p>There was an error in changing the claim status to <?php echo $new_status?></p>
 			</div>
 			<?php
 		}else{
 			?>
-			<div class="notice-error notice">
-				<p>There was an error in changing the claim status to <?php echo $new_status?></p>
+			<div class="notice-success notice">
+				<p>Claim status changed to <?php echo(esc_attr($new_status))?> </p>
 			</div>
 			<?php
 		}
 
 	}
 
+	/**
+     * Deletes selected claims and their associated attachments.
+     *
+     * @since 1.0.0
+     * @param array $claim_ids The IDs of claims to delete.
+     */
 	public function delete_claims($claim_ids){
 		if (empty($claim_ids)) {
 			?>
@@ -410,23 +489,30 @@ class Volunteer_Reimbursement_Admin {
 		$delete_sql = "DELETE FROM {$this->table_name} WHERE id IN ($ids_placeholder)";
 		$result = $this->wpdb->query($this->wpdb->prepare($delete_sql, $claim_ids));
 
-		if($result){
+		if($this->wpdb->last_error){
+			?>
+			<div class="notice-error notice">
+				<p>There was an error deleting these claims</p>
+			</div>
+			<?php
+		}else{
 			$num_deleted = count($claim_ids);
 			?>
 			<div class="notice-success notice">
 				<p><?php echo $num_deleted?> claim<?php ($num_deleted > 1) ? 's' : ''?> deleted </p>
 			</div>
 			<?php
-		}else{
-			?>
-			<div class="notice-error notice">
-				<p>There was an error deleting these claims</p>
-			</div>
-			<?php
 		}
 
 	}
-	
+
+	/**
+     * Generates a Xero export file and related attachments in a zip format.
+     *
+     * @since 1.0.0
+     * @param array $claim_ids The IDs of claims to include in the export.
+     * @throws Exception If an error occurs during export.
+     */
 	public function generate_xero_export($claim_ids) {
 		if(empty($claim_ids)){
 			throw new Exception('No forms selected');
@@ -542,14 +628,17 @@ class Volunteer_Reimbursement_Admin {
 			throw new Exception('Failed to create ZIP file');
 		}
 
-		// array_map('unlink', glob("$temp_dir/*"));
-		// rmdir($temp_dir);
-
 		// Send CSV file as response
 		return $zip_file;
 	}
 
-
+    /**
+     * Sends an email notification when a claim is approved.
+     *
+     * @since 1.0.0
+     * @param object $claim The claim object.
+     * @param string $new_status The new status of the claim.
+     */
 	public function claim_approved_email($claim, $new_status) {
 		if(get_option('vr_allow_notification_emails', 'yes')!=='yes'){
 			return;
@@ -562,7 +651,7 @@ class Volunteer_Reimbursement_Admin {
 		$amount = number_format($meta['amount']['dollars'] + $meta['amount']['cents'] / 100, 2);
 	
 		$subject = sprintf('Your %s claim #%d for %s has been approved', 
-						$claim->form_type,
+						MetaDataFormatter::format_form_type($claim->form_type),
 						 $claim->id,
 						 $purpose);
 		$message = sprintf(
@@ -579,12 +668,20 @@ class Volunteer_Reimbursement_Admin {
 		}
 
 		$message .="\n\nThank you.\nAMSA Treasurer";
-	
+		
+		debug_print($payee_email);
 		$email_status = wp_mail($payee_email, $subject, $message);
 
 		error_log($email_status);
 	}
 
+	    /**
+     * Sends an email notification when a claim is paid.
+     *
+     * @since 1.0.0
+     * @param object $claim The claim object.
+     * @param string $new_status The new status of the claim.
+     */
 	public function claim_paid_email($claim, $new_status) {
 		if(get_option('vr_allow_notification_emails', 'yes')!=='yes'){
 			return;
@@ -597,7 +694,7 @@ class Volunteer_Reimbursement_Admin {
 		$transaction_details = $meta['transaction_details'] ?? 'N/A';
 	
 		$subject = sprintf('Your %s claim #%d for %s has been paid', 
-						$claim->form_type,
+						MetaDataFormatter::format_form_type($claim->form_type),
 						$claim->id,
 						$purpose);
 
@@ -621,6 +718,58 @@ class Volunteer_Reimbursement_Admin {
 		error_log($email_status);
 	}
 
+	
+	    /**
+     * Sends an email notification when a claim is paid.
+     *
+     * @since 1.0.0
+     * @param object $claim The claim object.
+     * @param string $new_status The new status of the claim.
+     */
+	public function claim_rejected_email($claim, $new_status) {
+		if(get_option('vr_allow_notification_emails', 'yes')!=='yes'){
+			return;
+		}
+		$meta = json_decode($claim->meta, true);
+		$payee_name = $meta['payee_name'];
+		$payee_email = $meta['payee_email'];
+		$purpose = $meta['purpose'];
+		$amount = number_format($meta['amount']['dollars'] + $meta['amount']['cents'] / 100, 2);
+		$transaction_details = $meta['transaction_details'] ?? 'N/A';
+	
+		$subject = sprintf('Your %s claim #%d for %s has been rejected', 
+						MetaDataFormatter::format_form_type($claim->form_type),
+						$claim->id,
+						$purpose);
+
+		// Email message content
+		$message = sprintf(
+			"Dear %s,\n\nWe regret to inform you that your claim submitted on %s has been rejected.\n\nDetails of your claim:\n- Purpose: %s\n- Description: %s\n- Amount: $%s\n\nIf you believe this decision was made in error or require further clarification, please reach out to us.\n",
+			$payee_name,
+			date('d/m/Y', strtotime($claim->submit_date)),
+			$purpose,
+			$transaction_details,
+			$amount
+		);
+		if($claim->user_id>0){
+			$claim_url = wc_get_account_endpoint_url( 'reimbursement-claims' );
+			$message .= "\nTo review your claim status and see additional comments, please visit your <a href='" . esc_url($claim_url) . "'>account page</a>";
+		}
+
+		$message .="\n\nThank you.\nAMSA Treasurer";
+	
+		$email_status = wp_mail($payee_email, $subject, $message);
+
+		error_log($email_status);
+	}
+
+    /**
+     * logs the time into the database when a claim is approved.
+     *
+     * @since 1.0.0
+     * @param object $claim The claim object.
+     * @param string $new_status The new status of the claim.
+     */
 	public function log_claim_approved_time($claim, $new_status){
 		if ($new_status === 'approved') {
 			// Update the approve_date to the current timestamp
@@ -633,14 +782,21 @@ class Volunteer_Reimbursement_Admin {
 			);
 	
 			// Check if the update was successful
-			if ($result === false) {
-				error_log('Failed to update approve_date for claim ID: ' . $claim->id);
+			if ($this->wpdb->last_error) {
+				error_log('Failed to update approve date for claim ID: ' . $claim->id);
 			} else {
-				error_log('Successfully updated approve_date for claim ID: ' . $claim->id);
+				error_log('Successfully updated approve date for claim ID: ' . $claim->id);
 			}
 		}
 	}
 
+    /**
+     * logs the time into the database when a claim is paid].
+     *
+     * @since 1.0.0
+     * @param object $claim The claim object.
+     * @param string $new_status The new status of the claim.
+     */
 	public function log_claim_paid_time($claim, $new_status){
 		if ($new_status === 'paid') {
 			// Update the approve_date to the current timestamp
@@ -653,14 +809,21 @@ class Volunteer_Reimbursement_Admin {
 			);
 	
 			// Check if the update was successful
-			if ($result === false) {
-				error_log('Failed to update approve_date for claim ID: ' . $claim->id);
+			if ($this->wpdb->last_error) {
+				error_log('Failed to update paid date for claim ID: ' . $claim->id);
 			} else {
-				error_log('Successfully updated approve_date for claim ID: ' . $claim->id);
+				error_log('Successfully updated paid date for claim ID: ' . $claim->id);
 			}
 		}
 	}
 
+	/**
+     * removes a folder and all its subfolders and contents
+     *
+     * @since 1.0.0
+     * @param object $claim The claim object.
+     * @param string $new_status The new status of the claim.
+     */
 	public function rrmdir(string $directory): bool
 	{
 		array_map(fn (string $file) => is_dir($file) ? $this->rrmdir($file) : unlink($file), glob($directory . '/' . '*'));

@@ -128,6 +128,11 @@
   color: green;
 }
 
+.vr_form_status_rejected {
+  font-weight: bold;
+  color: red; /* Use red to indicate rejection clearly */
+}
+
 .loading-spinner {
   position: relative;
     width: 24px;
@@ -304,4 +309,33 @@
 
 .vr-modal-close:hover {
   color: red;
+}
+
+.vr-comments-container {
+  position: relative;
+  cursor: pointer;
+  color: #0073aa; /* WordPress default link color */
+  text-decoration: underline;
+}
+
+.vr-comments-container[title] {
+  position: relative;
+  text-decoration: underline dotted;
+}
+
+.vr-comments-container[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  color: #fff;
+  padding: 5px 10px;
+  white-space: pre-wrap; /* To preserve formatting for multiline comments */
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  display: block;
+  min-width: 300px;
 }

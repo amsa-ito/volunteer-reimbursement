@@ -19,6 +19,7 @@ class MetaDataFormatter {
             'pending'   => 'Pending',
             'approved'  => 'Approved',
             'paid'      => 'Paid',
+            'rejected'  => 'Rejected'
         ];
 
         // Return the formatted status or the original status if not found in the mapping.

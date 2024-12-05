@@ -1,4 +1,23 @@
 <?php
+/**
+ * Reimbursement Form Partial
+ *
+ * This partial displays the form and instructions for submitting a reimbursement request. 
+ * Users can provide details of their out-of-pocket expenses for AMSA-related activities 
+ * and attach the required documentation for reimbursement processing.
+ *
+ * Key Components:
+ * - **Instructions Section**: Explains the required documentation and process for reimbursement.
+ * - **Warnings**: Ensures users understand the need for tax invoices and payment evidence.
+ * - **Form**: Collects necessary data for reimbursement, such as transaction details and uploaded documents.
+ *
+ * Usage:
+ * - Loaded dynamically as part of the `vr_handle_claim_form_submission` workflow.
+ *
+ *
+ * @since 1.0.0
+ */
+
 $current_user = wp_get_current_user();
 ?>
 

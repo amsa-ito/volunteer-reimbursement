@@ -12,6 +12,8 @@ class VR_Payment_Request_Form{
 		add_filter('vr_display_public_'.$this->form_type, array($this,"display_public_form"), 10, 1);
 		add_filter('vr_display_admin_'.$this->form_type, array($this,"display_admin_form"), 10, 2);
 
+		add_filter('vr_display_submission_email_'.$this->form_type, array($this,"display_email_submission"), 10, 2);
+
 
 	}
 
@@ -106,8 +108,7 @@ class VR_Payment_Request_Form{
 		$transaction->setBsb($formatted_bsb);
 		$transaction->setTransactionCode(53);
 		$transaction->setReference($claim->id);
-		error_log($claim->id);
-		error_log($claim_data->amount->dollars+ $claim_data->amount->cents/100);
+
 		$transaction->setAmount($claim_data->amount->dollars*100+ $claim_data->amount->cents);
 
 		return $transaction;
@@ -142,5 +143,57 @@ class VR_Payment_Request_Form{
 		require_once(VR_PLUGIN_PATH . 'admin/partials/payment-request.php');
 		
 		return ob_get_clean();
+	}
+
+	public function display_email_submission($message, $form_data){
+		$table_style = "width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;";
+		$th_style = "background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd;";
+		$td_style = "padding: 8px; border: 1px solid #ddd;";
+		$ul_style = "margin: 0; padding-left: 20px;";
+
+		$message .= "<table style='" . esc_attr($table_style) . "' class='vr-submit-confirm-email'>";
+
+		foreach ($form_data as $key => $value) {
+			if (!empty($value)) { // Skip empty values
+				$label = esc_html(ucwords(str_replace('_', ' ', $key)));
+				
+				// Special handling for specific keys
+				if ($key === 'amount' && is_array($value)) {
+					// Combine dollars and cents
+					$amount = number_format((float)$value['dollars'] + ($value['cents'] / 100), 2);
+					$message .= "<tr><td style='" . esc_attr($th_style) . "'>" . $label . ":</td>";
+					$message .= "<td style='" . esc_attr($td_style) . "'>$" . esc_html($amount) . "</td></tr>";
+				}elseif ($key === 'attachments' && is_array($value)) {
+					// Handle attachments array
+					$message .= "<tr><td style='" . esc_attr($th_style) . "'>" . $label . ":</td>";
+					$message .= "<td style='" . esc_attr($td_style) . "'>";
+					$message .= "<ul style='" . esc_attr($ul_style) . "'>";
+					foreach ($value as $attachment_id => $attachment_url) {
+						if (isset($attachment_url, $attachment_id)) {
+							$message .= "<li><a href='" . esc_url($attachment_url) . "'>Attachment " . esc_html($attachment_id) . "</a></li>";
+						}
+					}
+					$message .= "</ul></td></tr>";
+				}elseif (is_array($value)) {
+					// General handling for arrays
+					$message .= "<tr><td style='" . esc_attr($th_style) . "'>" . $label . ":</td>";
+					$message .= "<td style='" . esc_attr($td_style) . "'>";
+					$message .= "<ul style='" . esc_attr($ul_style) . "'>";
+					foreach ($value as $item) {
+						$message .= "<li>" . esc_html($item) . "</li>";
+					}
+					$message .= "</ul></td></tr>";
+				} else {
+					// Handle non-array values
+					$message .= "<tr>";
+					$message .= "<td style='" . esc_attr($th_style) . "'>" . $label . ":</td>";
+					$message .= "<td style='" . esc_attr($td_style) . "'>" . esc_html($value) . "</td>";
+					$message .= "</tr>";
+				}
+			}
+		}
+		$message .= "</table>";
+
+		return $message;
 	}
 }

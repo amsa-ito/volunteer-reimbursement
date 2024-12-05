@@ -58,6 +58,13 @@ class Volunteer_Reimbursement_My_Account {
         add_action('init', array($this, 'add_reimbursement_claims_endpoint'));
     }
 
+    /**
+     * Add a "Reimbursement Claims" tab to the WooCommerce My Account menu.
+     *
+     * @since 1.0.0
+     * @param array $menu_links The current WooCommerce My Account menu links.
+     * @return array The modified menu links with the new tab added if applicable.
+     */
     public function add_reimbursement_tab_to_my_account($menu_links) {
         $user_id = get_current_user_id();
     
@@ -70,6 +77,13 @@ class Volunteer_Reimbursement_My_Account {
         return $menu_links;
     }
 
+    /**
+     * Check if a user has any reimbursement claims.
+     *
+     * @since 1.0.0
+     * @param int $user_id The user ID to check for reimbursement claims.
+     * @return bool True if the user has reimbursement claims, false otherwise.
+     */
     public function user_has_reimbursement_claims($user_id) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'volunteer_reimbursements';
@@ -81,6 +95,13 @@ class Volunteer_Reimbursement_My_Account {
         return $result > 0;
     }
 
+    /**
+     * Display the content for the "Reimbursement Claims" tab in the My Account page.
+     *
+     * Retrieves the claims data for the current user and loads the appropriate view template.
+     *
+     * @since 1.0.0
+     */
     public function display_reimbursement_claims_tab_content() {
         global $wpdb;
         $user_id = get_current_user_id();
@@ -99,6 +120,13 @@ class Volunteer_Reimbursement_My_Account {
 
     }
 
+    /**
+     * Register the "Reimbursement Claims" endpoint in WordPress.
+     *
+     * This endpoint allows the WooCommerce My Account page to display the custom tab's content.
+     *
+     * @since 1.0.0
+     */
     public function add_reimbursement_claims_endpoint() {
         add_rewrite_endpoint('reimbursement-claims', EP_ROOT | EP_PAGES);
     }

@@ -13,7 +13,7 @@ if($claim->user_id>0){
 <h1>Claim Details</h1>
 <form method="post" id="vr-claim-form" class="vr-claim-form">
 <input type="hidden" name="action" value="save_admin_claim_form">
-<input type="hidden" name="form_id" value=" <?php echo $form_id ?>">
+<input type="hidden" name="claim_id" value=" <?php echo $claim_id ?>">
 
 <div class="form-layout">
     <div class="form-panel-left">
@@ -46,6 +46,8 @@ if($claim->user_id>0){
             <option value="pending"<?php echo selected($claim->status, 'pending', false) ?>>Pending</option>
             <option value="approved"<?php echo selected($claim->status, 'approved', false) ?>>Approved</option>
             <option value="paid"<?php echo selected($claim->status, 'paid', false) ?>>Paid</option>
+            <option value="rejected"<?php echo selected($claim->status, 'rejected', false) ?>>Rejected</option>
+
             </select>
             </div>
         </div>
@@ -60,7 +62,7 @@ if($claim->user_id>0){
         </fieldset>
 
         <p class="submit"><input type="submit" class="button-primary" value="Save Changes"></p>
-        <div id="form-response"></div>
+        <div id="vr-form-response"></div>
     </div>
 </div>
 

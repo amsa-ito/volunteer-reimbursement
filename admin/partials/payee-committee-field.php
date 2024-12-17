@@ -1,10 +1,6 @@
 <?php
-$options = [
-			"AMSA Reps", "AMSA Global Health Committee", "AMSA Rural Health Committee", "Board of Directors",
-			"Convention 2022", "Convention 2023", "Executive", "Careers Conference 23", "AMSA Indigenous Health",
-			"Med Ed", "AMSA ISN", "AMSA Projects", "NLDS 2022", "RHS 2022", "AMSA Queer", "Vampire Cup",
-			"Mental Health", "Gender Equity", "National Council", "Other"
-		];
+$saved_options = get_option('vr_committee_options', "");
+$options = array_filter(array_map('trim', explode("\n", $saved_options))); // Split into array and trim spaces
 	
 // Determine if the value is in the predefined options
 $isOther = !in_array($payee_committee, $options);

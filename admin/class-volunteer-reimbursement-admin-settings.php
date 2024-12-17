@@ -171,15 +171,46 @@
 
 		add_settings_field(
 			'vr_form_submit_notification_recipients',
-			'Notification Recipients',
+			'Claim Submission Notification Recipients',
 			function () {
 				$value = get_option('vr_form_submit_notification_recipients', []);
 				echo '<input type="text" name="vr_form_submit_notification_recipients" value="' . ($value ? implode(',', $value) : '') . '" class="regular-text">';
+				echo '<p class="description">Email notifications for when a claim is submitted</p>';
+
 
 			},
 			'volunteer-reimbursement-settings',
 			'vr_settings_section'
 		);
+
+		// Register the setting to store committee options
+		register_setting('vr_settings_group', 'vr_committee_options');
+
+		// Add a settings section
+		add_settings_section(
+			'vr_committee_section',
+			'Form Options',
+			null,
+			'volunteer-reimbursement-settings'
+		);
+	
+		// Add a text area field for editing the committee options
+		add_settings_field(
+			'vr_committee_options_field',
+			'Committee Options',
+			array($this, 'vr_committee_options_callback'),
+			'volunteer-reimbursement-settings',
+			'vr_committee_section'
+		);
+	}
+
+	public function vr_committee_options_callback() {
+		$options = get_option('vr_committee_options', "AMSA Reps\nAMSA Global Health Committee\nOther"); // Default options
+		?>
+		<p class="description">Enter one committee option per line. These options will appear in the "Select Committee" dropdown.</p>
+
+		<textarea name="vr_committee_options" rows="10" cols="20" class="large-text"><?php echo esc_textarea($options); ?></textarea>
+		<?php
 	}
 
 	public function vr_sanitize_bank_name($input) {

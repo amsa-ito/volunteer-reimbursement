@@ -52,26 +52,14 @@ $current_user = wp_get_current_user();
             <div class="vr-form-group">
             <label for="payee_committee">Select Committee<span class="required">*</span></label>
             <select id="payee_committee" name="payee_committee" required>
-                <option value="AMSA Reps">AMSA Reps</option>
-                <option value="AMSA Global Health Committee">AMSA Global Health Committee</option>
-                <option value="AMSA Rural Health Committee">AMSA Rural Health Committee</option>
-                <option value="Board of Directors">Board of Directors</option>
-                <option value="Convention 2022">Convention 2022</option>
-                <option value="Convention 2023">Convention 2023</option>
-                <option value="Executive">Executive</option>
-                <option value="Careers Conference 23">Careers Conference 23</option>
-                <option value="AMSA Indigenous Health">AMSA Indigenous Health</option>
-                <option value="Med Ed">Med Ed</option>
-                <option value="AMSA ISN">AMSA ISN</option>
-                <option value="AMSA Projects">AMSA Projects</option>
-                <option value="NLDS 2022">NLDS 2022</option>
-                <option value="RHS 2022">RHS 2022</option>
-                <option value="AMSA Queer">AMSA Queer</option>
-                <option value="Vampire Cup">Vampire Cup</option>
-                <option value="Mental Health">Mental Health</option>
-                <option value="Gender Equity">Gender Equity</option>
-                <option value="National Council">National Council</option>
-                <option value="Other">Other</option>
+            <?php
+                    $saved_options = get_option('vr_committee_options', "");
+                    $committee_options = array_filter(array_map('trim', explode("\n", $saved_options))); // Split into array and trim spaces
+
+                    foreach ($committee_options as $option) {
+                        echo '<option value="' . esc_attr($option) . '">' . esc_html($option) . '</option>';
+                    }
+                    ?>
             </select>
 
             <!-- Text input for specifying "Other" committee, hidden initially -->

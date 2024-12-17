@@ -185,8 +185,8 @@
   color: #555;
 }
 
-.vr-form-group input, 
-.vr-form-group select, 
+.vr-form-group input,
+.vr-form-group select,
 .vr-form-group textarea {
     width: 100%;
     padding: 10px;
@@ -196,8 +196,8 @@
     transition: border-color 0.2s ease-in-out;
 }
 
-.vr-form-group input:focus, 
-.vr-form-group select:focus, 
+.vr-form-group input:focus,
+.vr-form-group select:focus,
 .vr-form-group textarea:focus {
     border-color: #007BFF;
     outline: none;
@@ -229,18 +229,16 @@
 
 /* Fieldset */
 .vr-claim-form fieldset {
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 0px;
   padding: 15px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .vr-claim-form legend {
   font-weight: bold;
   padding: 0 10px;
-  background: #f9f9f9;
-  border-radius: 4px;
-  color: #333;
+  color: var(--global-palette1)!important;
 }
 
 .vr-form-row {
@@ -338,4 +336,82 @@
   z-index: 1000;
   display: block;
   min-width: 300px;
+}
+
+
+/*Additional CSS*/
+.reimbursement_css {
+  margin-top: 25px;
+}
+
+.reimbursement_css p,
+.reimbursement_css ul {
+  margin-bottom: 5px!important;
+}
+
+.reimbursement_css h2 {
+  font-size: 18px !important;
+  color: var(--global-palette1)!important;
+}
+
+.reimbursement_css .form-section {
+  border: none;
+  border-radius: 5px;
+  background: #FFF;
+}
+
+.reimbursement-log,
+form#claim-type-form {
+  padding: 15px;
+  margin: 20px 0;
+  background: #FFF;
+  border-radius: 10px;
+}
+
+select#claim_type {
+    border-radius: 5px;
+    border: none;
+    background: rgba(0, 0, 0, 0.06);
+    margin-left: 10px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+#claim-type-form button,
+.vr-form-group button {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    margin-left: 10px;
+}
+
+#reimbursement-form {
+    background: #FFF;
+    border: none;
+    box-shadow: none;
+    margin-bottom: 20px;
+}
+
+#reimbursement-form h2,
+#reimbursement-form p {
+    margin: 0;
+}
+
+.vr-form-group button {
+  margin-left: 0;
+  margin-top: 15px;
+}
+
+.reimburse_title {
+  padding: 15px;
+  margin-top: 15px;
+  border-radius: 10px;
+  background: var(--global-palette1)!important;
+  text-align: center;
+  border-bottom: 4px solid rgba(0,0,0,0.1);
+}
+
+.reimburse_title h2 {
+  font-size: 25px;
+  color: #FFF!important;
 }

@@ -34,8 +34,6 @@ class VR_Payment_Request_Form{
 			'supplier_bank_name' => sanitize_text_field($input['supplier_bank_name']),
 			'supplier_bsb' => sanitize_text_field($input['supplier_bsb']),
 			'supplier_account_number' => sanitize_text_field($input['supplier_account_number']),
-			'supplier_bpay' => sanitize_text_field($input['supplier_bpay']),
-			'supplier_bpay_reference' => sanitize_text_field($input['supplier_bpay_reference']),
 			'purpose' => sanitize_text_field($input['purpose']),
 			'transaction_details' => sanitize_textarea_field($input['transaction_details']),
 			'due_date' => sanitize_text_field($input['due_date']),
@@ -78,7 +76,7 @@ class VR_Payment_Request_Form{
     }
 
     public function check_valid_form_data($form_data){
-        $required_fields=['payee_name','payee_email','payee_committee','payee_phone_number', 'business_name', 'supplier_email', 'purpose', 'transaction_details', 'due_date', 'attachments'];
+        $required_fields=['payee_name','payee_email','payee_committee','payee_phone_number', 'business_name', 'supplier_email', 'purpose', 'transaction_details', 'due_date', 'supplier_bsb', 'supplier_account_number'];
 		
         foreach ( $required_fields as $field ) {
 			if ( empty( $form_data[$field] ) ) {

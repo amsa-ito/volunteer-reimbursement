@@ -3,7 +3,7 @@
 /**
  * Claim Type Selection Partial
  *
- * This template displays the "Claim Type Selection" form and associated instructions for users. 
+ * This template displays the "Claim Type Selection" form and associated instructions for users.
  * The form allows users to choose between a reimbursement claim or a payment request and provides
  * relevant guidance on each option.
  *
@@ -29,7 +29,11 @@
  * - For logged-out users, a prompt is displayed to log in and track claims.
  */
 ?>
-<div class="container">
+<div class="reimburse_title">
+  <h2>AMSA Treasury</h2>
+</div>
+
+<div class="container reimbursement_css">
     <!-- Reimbursement Request Section -->
     <div class="form-section">
         <h2>Reimbursement Request</h2>
@@ -66,32 +70,35 @@
     </div>
 </div>
 
-<?php
-// Check if the user is logged in
-if ( !is_user_logged_in() ){
-    echo '<p>Have an AMSA account? <a href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Log in to track your reimbursement ticket</a>.</p>';
-}else{
-        // Get the current user's display name
-    $current_user = wp_get_current_user();
-    $display_name = $current_user->display_name;
-    
-    // Display a message for logged-in users
-    echo '<p>You are currently logged in as <strong>' . esc_html( $display_name ) . '</strong>. Check your <a href="'.wc_get_account_endpoint_url( 'reimbursement-claims' ).'">existing claims here</a>.</p>';
-} 
-?>
+<div class="reimbursement-log">
+  <?php
+  // Check if the user is logged in
+  if ( !is_user_logged_in() ){
+      echo '<p>Have an AMSA account? <a href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Log in to track your reimbursement ticket</a>.</p>';
+  }else{
+          // Get the current user's display name
+      $current_user = wp_get_current_user();
+      $display_name = $current_user->display_name;
+
+      // Display a message for logged-in users
+      echo '<p>You are currently logged in as <strong>' . esc_html( $display_name ) . '</strong>. Check your <a href="'.wc_get_account_endpoint_url( 'reimbursement-claims' ).'">existing claims here</a>.</p>';
+  }
+  ?>
+</div>
+
 <form id="claim-type-form" method="post">
     <input type="hidden" name="action" value="claim_type_selection">
-    <label for="claim_type">Select Payment Type:</label>
+    <label for="claim_type">Select payment type:</label>
     <select id="claim_type" name="claim_type" required>
-        <option value="">-- Choose an option --</option>
+        <option value="">Select an option</option>
         <option value="reimbursement">Volunteer Reimbursement</option>
         <option value="payment_request">Payment Request</option>
     </select>
     <button type="submit">Submit</button>
 </form>
 <div id="vr-form-content"></div>
-    
-    
+
+
 <?php
 // TODO form validate as you type
 // TODO what to do about Optional additional email for receipt

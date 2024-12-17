@@ -49,7 +49,7 @@ $current_user = wp_get_current_user();
             <div class="vr-form-group">
                 <label for="payee_committee">Select Committee<span class="required">*</span></label>
                 <select id="payee_committee" name="payee_committee" required>
-                    <option value="AMSA Reps">AMSA Reps</option>
+                    <!-- <option value="AMSA Reps">AMSA Reps</option>
                     <option value="AMSA Global Health Committee">AMSA Global Health Committee</option>
                     <option value="AMSA Rural Health Committee">AMSA Rural Health Committee</option>
                     <option value="Board of Directors">Board of Directors</option>
@@ -68,7 +68,15 @@ $current_user = wp_get_current_user();
                     <option value="Mental Health">Mental Health</option>
                     <option value="Gender Equity">Gender Equity</option>
                     <option value="National Council">National Council</option>
-                    <option value="Other">Other</option>
+                    <option value="Other">Other</option> -->
+                    <?php
+                    $saved_options = get_option('vr_committee_options', "");
+                    $committee_options = array_filter(array_map('trim', explode("\n", $saved_options))); // Split into array and trim spaces
+
+                    foreach ($committee_options as $option) {
+                        echo '<option value="' . esc_attr($option) . '">' . esc_html($option) . '</option>';
+                    }
+                    ?>
                 </select>
 
                 <!-- Text input for specifying "Other" committee, hidden initially -->
@@ -107,22 +115,22 @@ $current_user = wp_get_current_user();
 
         <div class="vr-form-row">
             <div class="vr-form-group">
-                <label for="supplier_bank_name">Bank account name</label>
-                <input type="text" name="supplier_bank_name" id="supplier_bank_name">
+                <label for="supplier_bank_name">Bank account name<span class="required">*</span></label>
+                <input type="text" name="supplier_bank_name" id="supplier_bank_name" required>
             </div>
 
             <div class="vr-form-group">
-                <label for="supplier_bsb">BSB number</label>
-                <input type="text" name="supplier_bsb" id="supplier_bsb" pattern="\d{5,6}" data-helper="Just the numerals, no hyphen.">
+                <label for="supplier_bsb">BSB number<span class="required">*</span></label>
+                <input type="text" name="supplier_bsb" id="supplier_bsb" pattern="\d{5,6}" data-helper="Just the numerals, no hyphen." required>
             </div>
 
             <div class="vr-form-group">
-                <label for="supplier_account_number">Bank account Number</label>
-                <input type="text" name="supplier_account_number" id="supplier_account_number" pattern="\d{5,9}">
+                <label for="supplier_account_number">Bank account Number<span class="required">*</span></label>
+                <input type="text" name="supplier_account_number" id="supplier_account_number" pattern="\d{5,9}" required>
             </div>
         </div>
 
-        <div class="vr-form-row">
+        <!-- <div class="vr-form-row">
             <div class="vr-form-group">
                 <label for="supplier_bpay">BPAY biller code</label>
                 <input type="text" name="supplier_bpay" id="supplier_bpay" pattern="\d{4,6}" data-helper="Just the numerals, no hyphen.">
@@ -132,7 +140,7 @@ $current_user = wp_get_current_user();
                 <label for="supplier_bpay_reference">BPAY Account or reference number</label>
                 <input type="text" name="supplier_bpay_reference" id="supplier_bpay_reference">
             </div>
-        </div>
+        </div> -->
     </fieldset>
     
 

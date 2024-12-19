@@ -1,114 +1,61 @@
-=== Plugin Name ===
-Contributors: (this should be a list of wordpress.org userid's)
-Donate link: https://amsa.org.au/
-Tags: comments, spam
-Requires at least: 3.0.1
-Tested up to: 3.4
-Stable tag: 4.3
-License: GPLv2 or later
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
+# Volunteer Reimbursement Plugin
 
-Here is a short description of the plugin.  This should be no more than 150 characters.  No markup here.
+The Volunteer Reimbursement Plugin is a custom WordPress extension designed to streamline the submission and management of reimbursement and payment requests for volunteers. It offers distinct functionalities for both volunteers and administrators, enhancing efficiency and transparency in financial processes.
 
-== Description ==
+## Features
 
-This is the long description.  No limit, and you can use Markdown (as well as in the following sections).
+### Volunteer Interface
 
-For backwards compatibility, if this section is missing, the full length of the short description will be used, and
-Markdown parsed.
+- **Submit Requests**: Volunteers can fill out and submit reimbursement or payment request forms directly through the website.
 
-A few notes about the sections above:
+- **Email Notifications**: Automated emails inform volunteers of any status changes to their requests.
 
-*   "Contributors" is a comma separated list of wp.org/wp-plugins.org usernames
-*   "Tags" is a comma separated list of tags that apply to the plugin
-*   "Requires at least" is the lowest version that the plugin will work on
-*   "Tested up to" is the highest version that you've *successfully used to test the plugin*. Note that it might work on
-higher versions... this is just the highest one you've verified.
-*   Stable tag should indicate the Subversion "tag" of the latest stable version, or "trunk," if you use `/trunk/` for
-stable.
+- **Status Tracking**: Volunteers can monitor the status of their submissions via the "My Account" page, provided their email matches a registered user on the website.
 
-    Note that the `readme.txt` of the stable tag is the one that is considered the defining one for the plugin, so
-if the `/trunk/readme.txt` file says that the stable tag is `4.3`, then it is `/tags/4.3/readme.txt` that'll be used
-for displaying information about the plugin.  In this situation, the only thing considered from the trunk `readme.txt`
-is the stable tag pointer.  Thus, if you develop in trunk, you can update the trunk `readme.txt` to reflect changes in
-your in-development version, without having that information incorrectly disclosed about the current stable version
-that lacks those changes -- as long as the trunk's `readme.txt` points to the correct stable tag.
+### Administrator Interface
 
-    If no stable tag is provided, it is assumed that trunk is stable, but you should specify "trunk" if that's where
-you put the stable version, in order to eliminate any doubt.
+- **Manage Requests**: View and edit submitted reimbursement and payment requests.
 
-== Installation ==
+- **Update Statuses**: Change request statuses among "Pending," "Approved," "Rejected," and "Paid."
 
-This section describes how to install the plugin and get it working.
+- **Bulk Export**: Export claims in Xero and ABA formats for streamlined bulk payments.
 
-e.g.
+### Frontend Management
 
-1. Upload `volunteer-reimbursement.php` to the `/wp-content/plugins/` directory
-1. Activate the plugin through the 'Plugins' menu in WordPress
-1. Place `<?php do_action('plugin_name_hook'); ?>` in your templates
+- **Dashboard Overview**: A comprehensive dashboard table displays all claims, categorized by type (payment requests or reimbursements) and status (pending, approved, rejected, paid).
 
-== Frequently Asked Questions ==
+- **Detailed View and Comments**: Administrators can view detailed claim information and leave comments, which are visible to volunteers in their account and via email notifications.
 
-= A question that someone might have =
+- **Email Notifications**: Status changes trigger email notifications to volunteers, unless disabled in the plugin settings.
 
-An answer to that question.
+## Technical Details
 
-= What about foo bar? =
+- **Database Structure**: Upon activation, the plugin creates a custom database table with columns for ID, submission date, approval date, payment date, user ID, status, form type, and metadata.
 
-Answer to foo bar dilemma.
+- **User Permissions**: A custom permission, "manage_volunteer_claims," is assigned to administrators and shop managers, granting access to the reimbursement admin dashboard.
 
-== Screenshots ==
+- **Data Access**: Form data is stored outside of the standard WordPress post types and is accessed via direct database queries. Ensure queries are constructed carefully to maintain data integrity.
 
-1. This screen shot description corresponds to screenshot-1.(png|jpg|jpeg|gif). Note that the screenshot is taken from
-the /assets directory or the directory that contains the stable readme.txt (tags or trunk). Screenshots in the /assets
-directory take precedence. For example, `/assets/screenshot-1.png` would win over `/tags/4.3/screenshot-1.png`
-(or jpg, jpeg, gif).
-2. This is the second screen shot
+## Installation
 
-== Changelog ==
+1. **Download the Plugin**: Clone or download the plugin from the [GitHub repository](https://github.com/amsa-ito/volunteer-reimbursement).
 
-= 1.0 =
-* A change since the previous version.
-* Another change.
+2. **Upload to WordPress**: Navigate to the WordPress admin dashboard, go to Plugins > Add New > Upload Plugin, and upload the plugin ZIP file.
 
-= 0.5 =
-* List versions from most recent at top to oldest at bottom.
+3. **Activate the Plugin**: After installation, activate the plugin through the 'Plugins' menu in WordPress.
 
-== Upgrade Notice ==
+## Usage
 
-= 1.0 =
-Upgrade notices describe the reason a user should upgrade.  No more than 300 characters.
+- **For Volunteers**: Access the reimbursement form through the form provided by shortcode `vr_reimbursement_form`, submit requests, and monitor statuses via the "My Account" page.
 
-= 0.5 =
-This version fixes a security related bug.  Upgrade immediately.
+- **For Administrators**: Manage submissions through the admin dashboard, update statuses, leave comments, and export claims as needed.
 
-== Arbitrary section ==
+## Contributing
 
-You may provide arbitrary sections, in the same format as the ones above.  This may be of use for extremely complicated
-plugins where more information needs to be conveyed that doesn't fit into the categories of "description" or
-"installation."  Arbitrary sections will be shown below the built-in sections outlined above.
+Contributions are welcome. Please fork the repository and submit pull requests for any enhancements or bug fixes.
 
-== A brief Markdown Example ==
+## License
 
-Ordered list:
+This plugin is licensed under the GPLv2 or later. See the [LICENSE.txt](https://github.com/amsa-ito/volunteer-reimbursement/blob/main/LICENSE.txt) file for details.
 
-1. Some feature
-1. Another feature
-1. Something else about the plugin
-
-Unordered list:
-
-* something
-* something else
-* third thing
-
-Here's a link to [WordPress](http://wordpress.org/ "Your favorite software") and one to [Markdown's Syntax Documentation][markdown syntax].
-Titles are optional, naturally.
-
-[markdown syntax]: http://daringfireball.net/projects/markdown/syntax
-            "Markdown is what the parser uses to process much of the readme file"
-
-Markdown uses email style notation for blockquotes and I've been told:
-> Asterisks for *emphasis*. Double it up  for **strong**.
-
-`<?php code(); // goes in backticks ?>`
+For more information or support, please refer to the [GitHub repository](https://github.com/amsa-ito/volunteer-reimbursement). 

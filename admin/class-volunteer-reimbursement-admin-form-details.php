@@ -85,7 +85,7 @@ class Volunteer_Reimbursement_Admin_Form_Details{
 			wp_send_json_error( [ 'status' => 'error', 'message' => $error_msg ] );
 		}
 
-		$user_id = $claim->id;
+		$user_id = $claim->user_id;
 		if(isset($form_data['payee_email'])){
 			$user_by_email = get_user_by('email', $form_data['payee_email']);
 			if($user_by_email){

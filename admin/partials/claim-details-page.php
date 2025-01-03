@@ -1,10 +1,10 @@
 <?php 
-if($claim->user_id>0){
+if($claim->user_id>0 && (bool) get_user_by('id', $claim->user_id)){
     $user_name = get_userdata($claim->user_id)->display_name;
     $user_profile_url = get_edit_user_link($claim->user_id);
     $user_name_display = sprintf('<a href="%s" target="_blank">%s</a>', esc_url($user_profile_url), esc_html($user_name));
 }else{
-    $user_name_display = json_decode($item->meta, true)['payee_name'];
+    $user_name_display = json_decode($claim->meta, true)['payee_name'];
 }
 
 ?>

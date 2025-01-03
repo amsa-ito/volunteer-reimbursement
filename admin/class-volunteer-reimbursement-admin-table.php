@@ -146,9 +146,9 @@ if (!class_exists('VR_Reimbursements_Table')) {
         // User column with link to profile
         protected function column_user($item) {
             $user_name = json_decode($item->meta, true)['payee_name'];
-
-            if($item->user_id){
-                $user_profile_url = get_edit_user_link($item->user_id);
+            
+            if (!empty($item->user_id) && is_numeric($item->user_id) &&  (bool) get_user_by( 'id', $item->user_id )){
+                $user_profile_url = get_edit_user_link((int)$item->user_id);
                 return sprintf('<a href="%s" target="_blank">%s</a>', esc_url($user_profile_url), esc_html($user_name));
             }else{
                 return $user_name;
